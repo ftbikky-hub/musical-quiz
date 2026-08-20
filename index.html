@@ -44,7 +44,16 @@
   }
   h1 span { color: var(--accent); }
 
-  .bgm-toggle {
+  .bgm-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: -6px 0 20px;
+    font-size: 0.82rem;
+  }
+  .bgm-bar-label { color: var(--text-dim); white-space: nowrap; }
+  .bgm-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -52,15 +61,16 @@
     border: 1px solid var(--panel-border);
     color: var(--text-dim);
     border-radius: 999px;
-    padding: 7px 14px;
+    padding: 6px 13px;
     font-size: 0.82rem;
     cursor: pointer;
     white-space: nowrap;
   }
-  .bgm-toggle:hover { border-color: var(--accent-dim); color: var(--text); }
-  .bgm-toggle.playing { color: var(--accent); border-color: var(--accent-dim); }
-  .bgm-toggle .bgm-icon { display: inline-block; }
-  .bgm-toggle.playing .bgm-icon { animation: bgm-pulse 1.6s ease-in-out infinite; }
+  .bgm-pill:hover { border-color: var(--accent-dim); color: var(--text); }
+  .bgm-pill.playing { color: var(--accent); border-color: var(--accent); background: rgba(217,164,65,0.1); }
+  .bgm-pill .bgm-icon { display: inline-block; }
+  .bgm-pill.playing .bgm-icon { animation: bgm-pulse 1.6s ease-in-out infinite; }
+  .bgm-pill-stop { color: var(--text-dim); }
   @keyframes bgm-pulse {
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.25); opacity: 0.65; }
@@ -294,10 +304,21 @@
   <div class="app">
     <header>
       <h1>🎭 <span>ミュージカル</span>クイズ</h1>
-      <button id="btn-bgm-toggle" class="bgm-toggle" type="button" aria-pressed="false">
-        <span class="bgm-icon">🔈</span><span id="bgm-toggle-label">BGMを再生</span>
-      </button>
     </header>
+
+    <div class="bgm-bar">
+      <span class="bgm-bar-label">🎵 BGM</span>
+      <button id="btn-bgm-orchestra" class="bgm-pill" type="button" data-track="orchestra">
+        <span class="bgm-icon">🔈</span>オケ風
+      </button>
+      <button id="btn-bgm-paris" class="bgm-pill" type="button" data-track="paris">
+        <span class="bgm-icon">🔈</span>パリ風
+      </button>
+      <button id="btn-bgm-stop" class="bgm-pill bgm-pill-stop hidden" type="button">停止</button>
+    </div>
+
+    <audio id="audio-orchestra" src="./bgm-orchestra.mp3" loop preload="none"></audio>
+    <audio id="audio-paris" src="./bgm-paris.mp3" loop preload="none"></audio>
 
     <div id="screen-loading">
       <p>読み込み中...</p>
@@ -379,160 +400,74 @@
     var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ------------------------------------------------------------
-    // アンビエントBGM（Web Audio APIでその場生成、外部音源なし）
+    // BGM（AIで作成した楽曲を選んで再生）
     // ------------------------------------------------------------
-    var AmbientMusic = (function () {
-      var ctx = null;
-      var masterGain = null;
-      var isPlaying = false;
-      var padOscillators = [];
-      var sparkleTimer = null;
-      var chordTimer = null;
-      var chordIndex = 0;
+    var audioOrchestra = document.getElementById("audio-orchestra");
+    var audioParis = document.getElementById("audio-paris");
+    var btnBgmOrchestra = document.getElementById("btn-bgm-orchestra");
+    var btnBgmParis = document.getElementById("btn-bgm-paris");
+    var btnBgmStop = document.getElementById("btn-bgm-stop");
 
-      // 落ち着いた雰囲気のコード進行（Cmaj7 → Am7 → Fmaj9 → Gsus4、Hz）
-      var CHORDS = [
-        [130.81, 164.81, 196.0, 246.94], // C3 E3 G3 B3 (Cmaj7)
-        [110.0, 130.81, 164.81, 196.0],  // A2 C3 E3 G3 (Am7)
-        [87.31, 130.81, 174.61, 220.0],  // F2 C3 F3 A3 (Fmaj9っぽい響き)
-        [98.0, 146.83, 196.0, 220.0],    // G2 D3 G3 A3 (Gsus4)
-      ];
-      // きらめきレイヤー用の音階（ペンタトニック、高音）
-      var SPARKLE_NOTES = [523.25, 587.33, 659.25, 783.99, 880.0, 987.77];
+    var BGM_TRACKS = {
+      orchestra: { audio: audioOrchestra, button: btnBgmOrchestra },
+      paris: { audio: audioParis, button: btnBgmParis }
+    };
+    var currentBgmKey = null;
 
-      function ensureContext() {
-        if (!ctx) {
-          var AudioCtx = window.AudioContext || window.webkitAudioContext;
-          ctx = new AudioCtx();
-          masterGain = ctx.createGain();
-          masterGain.gain.value = 0;
+    function updateBgmButtons() {
+      Object.keys(BGM_TRACKS).forEach(function (key) {
+        var track = BGM_TRACKS[key];
+        var playing = currentBgmKey === key;
+        track.button.classList.toggle("playing", playing);
+        track.button.setAttribute("aria-pressed", playing ? "true" : "false");
+        track.button.querySelector(".bgm-icon").textContent = playing ? "🔊" : "🔈";
+      });
+      btnBgmStop.classList.toggle("hidden", !currentBgmKey);
+    }
 
-          var delay = ctx.createDelay(2.0);
-          delay.delayTime.value = 0.55;
-          var feedback = ctx.createGain();
-          feedback.gain.value = 0.32;
-          var delayFilter = ctx.createBiquadFilter();
-          delayFilter.type = "lowpass";
-          delayFilter.frequency.value = 1800;
+    function stopAllBgm() {
+      Object.keys(BGM_TRACKS).forEach(function (key) {
+        var audio = BGM_TRACKS[key].audio;
+        audio.pause();
+        audio.currentTime = 0;
+      });
+      currentBgmKey = null;
+      updateBgmButtons();
+    }
 
-          masterGain.connect(ctx.destination);
-          masterGain.connect(delay);
-          delay.connect(delayFilter);
-          delayFilter.connect(feedback);
-          feedback.connect(delay);
-          delay.connect(ctx.destination);
+    function playBgm(key) {
+      Object.keys(BGM_TRACKS).forEach(function (k) {
+        if (k !== key) {
+          BGM_TRACKS[k].audio.pause();
+          BGM_TRACKS[k].audio.currentTime = 0;
         }
-        return ctx;
-      }
-
-      function playChord(freqs) {
-        padOscillators.forEach(function (o) {
-          try {
-            var g = o.gain;
-            g.gain.cancelScheduledValues(ctx.currentTime);
-            g.gain.setTargetAtTime(0, ctx.currentTime, 1.2);
-            o.osc.stop(ctx.currentTime + 4);
-          } catch (e) {}
-        });
-        padOscillators = [];
-
-        freqs.forEach(function (freq, i) {
-          var osc = ctx.createOscillator();
-          osc.type = i === 0 ? "triangle" : "sine";
-          osc.frequency.value = freq;
-
-          var filter = ctx.createBiquadFilter();
-          filter.type = "lowpass";
-          filter.frequency.value = 900;
-
-          var gain = ctx.createGain();
-          gain.gain.value = 0;
-
-          osc.connect(filter);
-          filter.connect(gain);
-          gain.connect(masterGain);
-
-          osc.start();
-          gain.gain.setTargetAtTime(0.055, ctx.currentTime, 2.5);
-
-          padOscillators.push({ osc: osc, gain: gain });
+      });
+      var playPromise = BGM_TRACKS[key].audio.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(function () {
+          // 自動再生がブロックされた場合などは静かに無視（ボタン操作は反映済み）
         });
       }
+      currentBgmKey = key;
+      updateBgmButtons();
+    }
 
-      function scheduleSparkle() {
-        var delaySec = 2 + Math.random() * 4.5;
-        sparkleTimer = window.setTimeout(function () {
-          if (!isPlaying) return;
-          var freq = SPARKLE_NOTES[Math.floor(Math.random() * SPARKLE_NOTES.length)];
-          var osc = ctx.createOscillator();
-          osc.type = "sine";
-          osc.frequency.value = freq;
-
-          var gain = ctx.createGain();
-          gain.gain.value = 0;
-          osc.connect(gain);
-          gain.connect(masterGain);
-
-          var now = ctx.currentTime;
-          osc.start(now);
-          gain.gain.linearRampToValueAtTime(0.045, now + 0.6);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.5);
-          osc.stop(now + 3.6);
-
-          scheduleSparkle();
-        }, delaySec * 1000);
+    function toggleBgm(key) {
+      if (currentBgmKey === key) {
+        stopAllBgm();
+      } else {
+        playBgm(key);
       }
+    }
 
-      function scheduleChordChange() {
-        chordTimer = window.setInterval(function () {
-          if (!isPlaying) return;
-          chordIndex = (chordIndex + 1) % CHORDS.length;
-          playChord(CHORDS[chordIndex]);
-        }, 26000);
-      }
-
-      function start() {
-        ensureContext();
-        if (ctx.state === "suspended") ctx.resume();
-        isPlaying = true;
-        chordIndex = 0;
-        playChord(CHORDS[chordIndex]);
-        masterGain.gain.cancelScheduledValues(ctx.currentTime);
-        masterGain.gain.setTargetAtTime(0.9, ctx.currentTime, 1.5);
-        scheduleSparkle();
-        scheduleChordChange();
-      }
-
-      function stop() {
-        isPlaying = false;
-        if (sparkleTimer) window.clearTimeout(sparkleTimer);
-        if (chordTimer) window.clearInterval(chordTimer);
-        if (masterGain && ctx) {
-          masterGain.gain.cancelScheduledValues(ctx.currentTime);
-          masterGain.gain.setTargetAtTime(0, ctx.currentTime, 1.0);
-        }
-      }
-
-      function toggle() {
-        if (isPlaying) {
-          stop();
-          return false;
-        }
-        start();
-        return true;
-      }
-
-      return { toggle: toggle };
-    })();
-
-    var elBgmToggle = document.getElementById("btn-bgm-toggle");
-    var elBgmLabel = document.getElementById("bgm-toggle-label");
-    elBgmToggle.addEventListener("click", function () {
-      var playing = AmbientMusic.toggle();
-      elBgmToggle.classList.toggle("playing", playing);
-      elBgmToggle.setAttribute("aria-pressed", playing ? "true" : "false");
-      elBgmToggle.querySelector(".bgm-icon").textContent = playing ? "🔊" : "🔈";
-      elBgmLabel.textContent = playing ? "BGMを停止" : "BGMを再生";
+    btnBgmOrchestra.addEventListener("click", function () {
+      toggleBgm("orchestra");
+    });
+    btnBgmParis.addEventListener("click", function () {
+      toggleBgm("paris");
+    });
+    btnBgmStop.addEventListener("click", function () {
+      stopAllBgm();
     });
 
     // ------------------------------------------------------------
