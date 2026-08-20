@@ -194,11 +194,60 @@
   }
   .choice-btn:hover:not(:disabled) { border-color: var(--accent-dim); }
   .choice-btn:disabled { cursor: default; }
-  .choice-btn.correct { background: rgba(76, 175, 125, 0.18); border-color: var(--correct); }
-  .choice-btn.incorrect { background: rgba(217, 83, 79, 0.18); border-color: var(--incorrect); }
+  .choice-btn { position: relative; transition: transform 0.15s ease; }
+  .choice-btn.correct {
+    background: rgba(76, 175, 125, 0.32);
+    border-color: var(--correct);
+    border-width: 2px;
+    color: #eafff2;
+    font-weight: 700;
+    animation: choice-pop 0.35s ease;
+  }
+  .choice-btn.incorrect {
+    background: rgba(217, 83, 79, 0.32);
+    border-color: var(--incorrect);
+    border-width: 2px;
+    color: #ffecec;
+    font-weight: 700;
+    animation: choice-shake 0.4s ease;
+  }
+  .choice-btn.correct::after,
+  .choice-btn.incorrect::after {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.15rem;
+  }
+  .choice-btn.correct::after { content: "◯"; color: var(--correct); }
+  .choice-btn.incorrect::after { content: "✕"; color: var(--incorrect); }
+  @keyframes choice-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.035); }
+    100% { transform: scale(1); }
+  }
+  @keyframes choice-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(2px); }
+  }
+
+  .quiz-feedback {
+    margin-top: 18px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .quiz-feedback.correct { background: rgba(76, 175, 125, 0.16); color: var(--correct); border: 1px solid var(--correct); }
+  .quiz-feedback.incorrect { background: rgba(217, 83, 79, 0.16); color: var(--incorrect); border: 1px solid var(--incorrect); }
 
   .explanation {
-    margin-top: 16px;
+    margin-top: 12px;
     padding: 12px 14px;
     background: #17101d;
     border-radius: 10px;
@@ -290,6 +339,7 @@
         <div class="musical-tag" id="quiz-musical"></div>
         <p class="question-text" id="quiz-question"></p>
         <div class="choices" id="quiz-choices"></div>
+        <div class="quiz-feedback hidden" id="quiz-feedback"></div>
         <div class="explanation hidden" id="quiz-explanation"></div>
         <div class="spacer"></div>
         <button id="btn-next" class="btn btn-primary hidden">次へ</button>
@@ -503,6 +553,7 @@
       quizMusical: document.getElementById("quiz-musical"),
       quizQuestion: document.getElementById("quiz-question"),
       quizChoices: document.getElementById("quiz-choices"),
+      quizFeedback: document.getElementById("quiz-feedback"),
       quizExplanation: document.getElementById("quiz-explanation"),
       resultScoreValue: document.getElementById("result-score-value"),
       resultDetail: document.getElementById("result-detail"),
@@ -636,6 +687,9 @@
       el.quizQuestion.textContent = q.question_text;
       el.quizExplanation.classList.add("hidden");
       el.quizExplanation.textContent = "";
+      el.quizFeedback.classList.add("hidden");
+      el.quizFeedback.className = "quiz-feedback hidden";
+      el.quizFeedback.textContent = "";
       el.btnNext.classList.add("hidden");
 
       el.quizChoices.innerHTML = "";
@@ -665,6 +719,15 @@
       });
       if (!choice.is_correct) btnEl.classList.add("incorrect");
       if (choice.is_correct) state.correctCount += 1;
+
+      if (choice.is_correct) {
+        el.quizFeedback.textContent = "◯ 正解！";
+        el.quizFeedback.className = "quiz-feedback correct";
+      } else {
+        var correctChoice = question.choices.filter(function (c) { return c.is_correct; })[0];
+        el.quizFeedback.textContent = "✕ 不正解… 正解は「" + (correctChoice ? correctChoice.choice_text : "?") + "」";
+        el.quizFeedback.className = "quiz-feedback incorrect";
+      }
 
       if (question.explanation) {
         el.quizExplanation.textContent = question.explanation;
