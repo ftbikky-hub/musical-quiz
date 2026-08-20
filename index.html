@@ -43,6 +43,85 @@
     letter-spacing: 0.02em;
   }
   h1 span { color: var(--accent); }
+
+  .bgm-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .bgm-toggle:hover { border-color: var(--accent-dim); color: var(--text); }
+  .bgm-toggle.playing { color: var(--accent); border-color: var(--accent-dim); }
+  .bgm-toggle .bgm-icon { display: inline-block; }
+  .bgm-toggle.playing .bgm-icon { animation: bgm-pulse 1.6s ease-in-out infinite; }
+  @keyframes bgm-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.65; }
+  }
+
+  .hero {
+    position: relative;
+    text-align: center;
+    padding: 26px 10px 8px;
+    margin-bottom: -4px;
+    overflow: visible;
+  }
+  .hero-glow {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(217,164,65,0.28) 0%, rgba(217,164,65,0) 70%);
+    pointer-events: none;
+  }
+  .hero-emoji {
+    font-size: 2.6rem;
+    display: inline-block;
+    position: relative;
+    animation: hero-float 4.5s ease-in-out infinite;
+  }
+  @keyframes hero-float {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+  }
+  .hero-notes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .hero-notes span {
+    position: absolute;
+    font-size: 1.1rem;
+    color: var(--accent);
+    opacity: 0;
+    animation: note-rise 6s ease-in infinite;
+  }
+  .hero-notes span:nth-child(1) { left: 18%; animation-delay: 0s; }
+  .hero-notes span:nth-child(2) { left: 48%; animation-delay: 1.8s; font-size: 0.9rem; }
+  .hero-notes span:nth-child(3) { left: 72%; animation-delay: 3.4s; }
+  .hero-notes span:nth-child(4) { left: 32%; animation-delay: 5s; font-size: 0.85rem; }
+  @keyframes note-rise {
+    0% { transform: translateY(10px) translateX(0); opacity: 0; }
+    15% { opacity: 0.85; }
+    80% { opacity: 0.4; }
+    100% { transform: translateY(-80px) translateX(10px); opacity: 0; }
+  }
+  .hero-tagline {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin: 6px 0 0;
+    letter-spacing: 0.04em;
+  }
+
   .card {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -166,6 +245,9 @@
   <div class="app">
     <header>
       <h1>🎭 <span>ミュージカル</span>クイズ</h1>
+      <button id="btn-bgm-toggle" class="bgm-toggle" type="button" aria-pressed="false">
+        <span class="bgm-icon">🔈</span><span id="bgm-toggle-label">BGMを再生</span>
+      </button>
     </header>
 
     <div id="screen-loading">
@@ -173,6 +255,12 @@
     </div>
 
     <div id="screen-start" class="hidden">
+      <div class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-notes"><span>♪</span><span>♫</span><span>♪</span><span>♬</span></div>
+        <span class="hero-emoji">🎟️🎶🎭</span>
+        <p class="hero-tagline">さあ、幕を開けよう</p>
+      </div>
       <div class="card">
         <h2>クイズを始めよう</h2>
         <p class="muted">全10問の中からランダムで5問出題されます。ミュージカルの知識を試してみましょう。</p>
@@ -239,6 +327,163 @@
     var QUESTIONS_PER_ROUND = 5;
 
     var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ------------------------------------------------------------
+    // アンビエントBGM（Web Audio APIでその場生成、外部音源なし）
+    // ------------------------------------------------------------
+    var AmbientMusic = (function () {
+      var ctx = null;
+      var masterGain = null;
+      var isPlaying = false;
+      var padOscillators = [];
+      var sparkleTimer = null;
+      var chordTimer = null;
+      var chordIndex = 0;
+
+      // 落ち着いた雰囲気のコード進行（Cmaj7 → Am7 → Fmaj9 → Gsus4、Hz）
+      var CHORDS = [
+        [130.81, 164.81, 196.0, 246.94], // C3 E3 G3 B3 (Cmaj7)
+        [110.0, 130.81, 164.81, 196.0],  // A2 C3 E3 G3 (Am7)
+        [87.31, 130.81, 174.61, 220.0],  // F2 C3 F3 A3 (Fmaj9っぽい響き)
+        [98.0, 146.83, 196.0, 220.0],    // G2 D3 G3 A3 (Gsus4)
+      ];
+      // きらめきレイヤー用の音階（ペンタトニック、高音）
+      var SPARKLE_NOTES = [523.25, 587.33, 659.25, 783.99, 880.0, 987.77];
+
+      function ensureContext() {
+        if (!ctx) {
+          var AudioCtx = window.AudioContext || window.webkitAudioContext;
+          ctx = new AudioCtx();
+          masterGain = ctx.createGain();
+          masterGain.gain.value = 0;
+
+          var delay = ctx.createDelay(2.0);
+          delay.delayTime.value = 0.55;
+          var feedback = ctx.createGain();
+          feedback.gain.value = 0.32;
+          var delayFilter = ctx.createBiquadFilter();
+          delayFilter.type = "lowpass";
+          delayFilter.frequency.value = 1800;
+
+          masterGain.connect(ctx.destination);
+          masterGain.connect(delay);
+          delay.connect(delayFilter);
+          delayFilter.connect(feedback);
+          feedback.connect(delay);
+          delay.connect(ctx.destination);
+        }
+        return ctx;
+      }
+
+      function playChord(freqs) {
+        padOscillators.forEach(function (o) {
+          try {
+            var g = o.gain;
+            g.gain.cancelScheduledValues(ctx.currentTime);
+            g.gain.setTargetAtTime(0, ctx.currentTime, 1.2);
+            o.osc.stop(ctx.currentTime + 4);
+          } catch (e) {}
+        });
+        padOscillators = [];
+
+        freqs.forEach(function (freq, i) {
+          var osc = ctx.createOscillator();
+          osc.type = i === 0 ? "triangle" : "sine";
+          osc.frequency.value = freq;
+
+          var filter = ctx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 900;
+
+          var gain = ctx.createGain();
+          gain.gain.value = 0;
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(masterGain);
+
+          osc.start();
+          gain.gain.setTargetAtTime(0.055, ctx.currentTime, 2.5);
+
+          padOscillators.push({ osc: osc, gain: gain });
+        });
+      }
+
+      function scheduleSparkle() {
+        var delaySec = 2 + Math.random() * 4.5;
+        sparkleTimer = window.setTimeout(function () {
+          if (!isPlaying) return;
+          var freq = SPARKLE_NOTES[Math.floor(Math.random() * SPARKLE_NOTES.length)];
+          var osc = ctx.createOscillator();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+
+          var gain = ctx.createGain();
+          gain.gain.value = 0;
+          osc.connect(gain);
+          gain.connect(masterGain);
+
+          var now = ctx.currentTime;
+          osc.start(now);
+          gain.gain.linearRampToValueAtTime(0.045, now + 0.6);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.5);
+          osc.stop(now + 3.6);
+
+          scheduleSparkle();
+        }, delaySec * 1000);
+      }
+
+      function scheduleChordChange() {
+        chordTimer = window.setInterval(function () {
+          if (!isPlaying) return;
+          chordIndex = (chordIndex + 1) % CHORDS.length;
+          playChord(CHORDS[chordIndex]);
+        }, 26000);
+      }
+
+      function start() {
+        ensureContext();
+        if (ctx.state === "suspended") ctx.resume();
+        isPlaying = true;
+        chordIndex = 0;
+        playChord(CHORDS[chordIndex]);
+        masterGain.gain.cancelScheduledValues(ctx.currentTime);
+        masterGain.gain.setTargetAtTime(0.9, ctx.currentTime, 1.5);
+        scheduleSparkle();
+        scheduleChordChange();
+      }
+
+      function stop() {
+        isPlaying = false;
+        if (sparkleTimer) window.clearTimeout(sparkleTimer);
+        if (chordTimer) window.clearInterval(chordTimer);
+        if (masterGain && ctx) {
+          masterGain.gain.cancelScheduledValues(ctx.currentTime);
+          masterGain.gain.setTargetAtTime(0, ctx.currentTime, 1.0);
+        }
+      }
+
+      function toggle() {
+        if (isPlaying) {
+          stop();
+          return false;
+        }
+        start();
+        return true;
+      }
+
+      return { toggle: toggle };
+    })();
+
+    var elBgmToggle = document.getElementById("btn-bgm-toggle");
+    var elBgmLabel = document.getElementById("bgm-toggle-label");
+    elBgmToggle.addEventListener("click", function () {
+      var playing = AmbientMusic.toggle();
+      elBgmToggle.classList.toggle("playing", playing);
+      elBgmToggle.setAttribute("aria-pressed", playing ? "true" : "false");
+      elBgmToggle.querySelector(".bgm-icon").textContent = playing ? "🔊" : "🔈";
+      elBgmLabel.textContent = playing ? "BGMを停止" : "BGMを再生";
+    });
 
     // ------------------------------------------------------------
     // DOM参照
