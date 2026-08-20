@@ -199,11 +199,22 @@
     <div id="screen-auth" class="hidden">
       <div class="card">
         <h2>ようこそ</h2>
-        <p class="muted">GitHubアカウントでログインすると、クイズに挑戦してスコアを記録できます。</p>
-        <button id="btn-signin" class="btn btn-github">
-          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          GitHubでログイン
-        </button>
+        <p class="muted">メールアドレスを入力すると、ログイン用のリンクが届きます。パスワードは不要です。</p>
+        <form id="form-magic-link">
+          <input
+            id="input-email"
+            type="email"
+            required
+            placeholder="you@example.com"
+            autocomplete="email"
+            style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:#1f1329;color:var(--text);font-size:0.98rem;margin-bottom:12px;"
+          />
+          <button id="btn-send-link" type="submit" class="btn btn-primary">ログインリンクを送る</button>
+        </form>
+        <div id="magic-link-sent" class="hidden" style="margin-top:16px;">
+          <p class="muted"><span id="magic-link-sent-email"></span> 宛にログインリンクを送りました。メールを確認してリンクを開いてください。</p>
+          <button id="btn-resend" class="btn btn-secondary">別のメールアドレスで送り直す</button>
+        </div>
       </div>
     </div>
 
@@ -273,7 +284,12 @@
       userBox: document.getElementById("user-box"),
       userAvatar: document.getElementById("user-avatar"),
       userName: document.getElementById("user-name"),
-      btnSignin: document.getElementById("btn-signin"),
+      formMagicLink: document.getElementById("form-magic-link"),
+      inputEmail: document.getElementById("input-email"),
+      btnSendLink: document.getElementById("btn-send-link"),
+      magicLinkSent: document.getElementById("magic-link-sent"),
+      magicLinkSentEmail: document.getElementById("magic-link-sent-email"),
+      btnResend: document.getElementById("btn-resend"),
       btnSignout: document.getElementById("btn-signout"),
       btnStart: document.getElementById("btn-start"),
       btnViewLeaderboard: document.getElementById("btn-view-leaderboard"),
@@ -330,7 +346,13 @@
     function updateUserBox(session) {
       if (session && session.user) {
         var meta = session.user.user_metadata || {};
-        el.userAvatar.src = meta.avatar_url || "";
+        if (meta.avatar_url) {
+          el.userAvatar.src = meta.avatar_url;
+          el.userAvatar.classList.remove("hidden");
+        } else {
+          el.userAvatar.removeAttribute("src");
+          el.userAvatar.classList.add("hidden");
+        }
         el.userName.textContent = meta.user_name || meta.full_name || session.user.email || "プレイヤー";
         el.userBox.classList.remove("hidden");
       } else {
@@ -345,13 +367,47 @@
         showScreen("start");
       } else {
         showScreen("auth");
+        el.formMagicLink.classList.remove("hidden");
+        el.magicLinkSent.classList.add("hidden");
       }
     }
 
-    el.btnSignin.addEventListener("click", function () {
-      supabase.auth.signInWithOAuth({ provider: "github" }).then(function (res) {
-        if (res.error) showError("ログインに失敗しました: " + res.error.message);
-      });
+    el.formMagicLink.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var email = el.inputEmail.value.trim();
+      if (!email) return;
+
+      el.btnSendLink.disabled = true;
+      el.btnSendLink.textContent = "送信中...";
+
+      supabase.auth
+        .signInWithOtp({
+          email: email,
+          options: { emailRedirectTo: window.location.origin + window.location.pathname },
+        })
+        .then(function (res) {
+          el.btnSendLink.disabled = false;
+          el.btnSendLink.textContent = "ログインリンクを送る";
+          if (res.error) {
+            showError("送信に失敗しました: " + res.error.message);
+            return;
+          }
+          el.magicLinkSentEmail.textContent = email;
+          el.formMagicLink.classList.add("hidden");
+          el.magicLinkSent.classList.remove("hidden");
+        })
+        .catch(function (err) {
+          el.btnSendLink.disabled = false;
+          el.btnSendLink.textContent = "ログインリンクを送る";
+          showError("送信に失敗しました: " + err.message);
+        });
+    });
+
+    el.btnResend.addEventListener("click", function () {
+      el.formMagicLink.classList.remove("hidden");
+      el.magicLinkSent.classList.add("hidden");
+      el.inputEmail.value = "";
+      el.inputEmail.focus();
     });
 
     el.btnSignout.addEventListener("click", function () {
