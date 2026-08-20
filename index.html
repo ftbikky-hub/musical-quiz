@@ -43,19 +43,6 @@
     letter-spacing: 0.02em;
   }
   h1 span { color: var(--accent); }
-  .user-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    color: var(--text-dim);
-  }
-  .user-box img {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 1px solid var(--panel-border);
-  }
   .card {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -88,19 +75,13 @@
     font-weight: 500;
   }
   .btn-secondary:hover { color: var(--text); border-color: var(--accent-dim); }
-  .btn-github {
-    background: #24292e;
-    color: #fff;
-  }
-  .btn-github:hover { background: #33383f; }
-  .btn-github svg { width: 18px; height: 18px; }
 
   .muted { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
 
   #screen-loading { text-align: center; color: var(--text-dim); padding: 40px 0; }
 
-  #screen-auth .card, #screen-start .card { text-align: center; }
-  #screen-auth h2, #screen-start h2 { margin-top: 0; }
+  #screen-start .card { text-align: center; }
+  #screen-start h2 { margin-top: 0; }
 
   .progress {
     font-size: 0.85rem;
@@ -185,44 +166,31 @@
   <div class="app">
     <header>
       <h1>🎭 <span>ミュージカル</span>クイズ</h1>
-      <div id="user-box" class="user-box hidden">
-        <img id="user-avatar" src="" alt="" />
-        <span id="user-name"></span>
-        <button id="btn-signout" class="btn-secondary" style="width:auto;padding:6px 10px;font-size:0.8rem;">ログアウト</button>
-      </div>
     </header>
 
     <div id="screen-loading">
       <p>読み込み中...</p>
     </div>
 
-    <div id="screen-auth" class="hidden">
-      <div class="card">
-        <h2>ようこそ</h2>
-        <p class="muted">メールアドレスを入力すると、ログイン用のリンクが届きます。パスワードは不要です。</p>
-        <form id="form-magic-link">
-          <input
-            id="input-email"
-            type="email"
-            required
-            placeholder="you@example.com"
-            autocomplete="email"
-            style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:#1f1329;color:var(--text);font-size:0.98rem;margin-bottom:12px;"
-          />
-          <button id="btn-send-link" type="submit" class="btn btn-primary">ログインリンクを送る</button>
-        </form>
-        <div id="magic-link-sent" class="hidden" style="margin-top:16px;">
-          <p class="muted"><span id="magic-link-sent-email"></span> 宛にログインリンクを送りました。メールを確認してリンクを開いてください。</p>
-          <button id="btn-resend" class="btn btn-secondary">別のメールアドレスで送り直す</button>
-        </div>
-      </div>
-    </div>
-
     <div id="screen-start" class="hidden">
       <div class="card">
         <h2>クイズを始めよう</h2>
         <p class="muted">全10問の中からランダムで5問出題されます。ミュージカルの知識を試してみましょう。</p>
-        <button id="btn-start" class="btn btn-primary">クイズを始める</button>
+
+        <label for="input-player-name" class="muted" style="display:block;text-align:left;margin-bottom:6px;font-size:0.85rem;">
+          お名前（入力するとランキングに載ります。空欄ならゲスト参加）
+        </label>
+        <input
+          id="input-player-name"
+          type="text"
+          maxlength="20"
+          placeholder="例）びっきぃ"
+          style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:#1f1329;color:var(--text);font-size:0.98rem;margin-bottom:14px;"
+        />
+
+        <button id="btn-start-named" class="btn btn-primary" disabled>この名前でプレイ</button>
+        <div class="spacer"></div>
+        <button id="btn-start-guest" class="btn btn-secondary">ゲストとして始める</button>
         <div class="spacer"></div>
         <button id="btn-view-leaderboard" class="btn btn-secondary">ランキングを見る</button>
       </div>
@@ -277,21 +245,12 @@
     // ------------------------------------------------------------
     var el = {
       loading: document.getElementById("screen-loading"),
-      auth: document.getElementById("screen-auth"),
       start: document.getElementById("screen-start"),
       quiz: document.getElementById("screen-quiz"),
       result: document.getElementById("screen-result"),
-      userBox: document.getElementById("user-box"),
-      userAvatar: document.getElementById("user-avatar"),
-      userName: document.getElementById("user-name"),
-      formMagicLink: document.getElementById("form-magic-link"),
-      inputEmail: document.getElementById("input-email"),
-      btnSendLink: document.getElementById("btn-send-link"),
-      magicLinkSent: document.getElementById("magic-link-sent"),
-      magicLinkSentEmail: document.getElementById("magic-link-sent-email"),
-      btnResend: document.getElementById("btn-resend"),
-      btnSignout: document.getElementById("btn-signout"),
-      btnStart: document.getElementById("btn-start"),
+      inputPlayerName: document.getElementById("input-player-name"),
+      btnStartNamed: document.getElementById("btn-start-named"),
+      btnStartGuest: document.getElementById("btn-start-guest"),
       btnViewLeaderboard: document.getElementById("btn-view-leaderboard"),
       btnAgain: document.getElementById("btn-again"),
       btnNext: document.getElementById("btn-next"),
@@ -307,17 +266,31 @@
     };
 
     var state = {
-      session: null,
+      playerName: null,
       questions: [],
       currentIndex: 0,
       correctCount: 0,
       sessionId: null,
+      startedAt: null,
+      pendingAnswers: [],
       answered: false,
     };
 
     function showScreen(name) {
-      ["loading", "auth", "start", "quiz", "result"].forEach(function (key) {
+      ["loading", "start", "quiz", "result"].forEach(function (key) {
         el[key].classList.toggle("hidden", key !== name);
+      });
+    }
+
+    function generateUUID() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      // 古いブラウザ向けの簡易フォールバック
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+        var r = (Math.random() * 16) | 0;
+        var v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
       });
     }
 
@@ -341,86 +314,35 @@
     }
 
     // ------------------------------------------------------------
-    // 認証まわり
+    // 開始画面（名前入力 / ゲスト）
     // ------------------------------------------------------------
-    function updateUserBox(session) {
-      if (session && session.user) {
-        var meta = session.user.user_metadata || {};
-        if (meta.avatar_url) {
-          el.userAvatar.src = meta.avatar_url;
-          el.userAvatar.classList.remove("hidden");
-        } else {
-          el.userAvatar.removeAttribute("src");
-          el.userAvatar.classList.add("hidden");
-        }
-        el.userName.textContent = meta.user_name || meta.full_name || session.user.email || "プレイヤー";
-        el.userBox.classList.remove("hidden");
-      } else {
-        el.userBox.classList.add("hidden");
+    el.inputPlayerName.addEventListener("input", function () {
+      el.btnStartNamed.disabled = el.inputPlayerName.value.trim().length === 0;
+    });
+
+    el.inputPlayerName.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !el.btnStartNamed.disabled) {
+        e.preventDefault();
+        startQuiz(el.inputPlayerName.value.trim());
       }
-    }
-
-    function renderAuthState(session) {
-      state.session = session;
-      updateUserBox(session);
-      if (session) {
-        showScreen("start");
-      } else {
-        showScreen("auth");
-        el.formMagicLink.classList.remove("hidden");
-        el.magicLinkSent.classList.add("hidden");
-      }
-    }
-
-    el.formMagicLink.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var email = el.inputEmail.value.trim();
-      if (!email) return;
-
-      el.btnSendLink.disabled = true;
-      el.btnSendLink.textContent = "送信中...";
-
-      supabase.auth
-        .signInWithOtp({
-          email: email,
-          options: { emailRedirectTo: window.location.origin + window.location.pathname },
-        })
-        .then(function (res) {
-          el.btnSendLink.disabled = false;
-          el.btnSendLink.textContent = "ログインリンクを送る";
-          if (res.error) {
-            showError("送信に失敗しました: " + res.error.message);
-            return;
-          }
-          el.magicLinkSentEmail.textContent = email;
-          el.formMagicLink.classList.add("hidden");
-          el.magicLinkSent.classList.remove("hidden");
-        })
-        .catch(function (err) {
-          el.btnSendLink.disabled = false;
-          el.btnSendLink.textContent = "ログインリンクを送る";
-          showError("送信に失敗しました: " + err.message);
-        });
     });
 
-    el.btnResend.addEventListener("click", function () {
-      el.formMagicLink.classList.remove("hidden");
-      el.magicLinkSent.classList.add("hidden");
-      el.inputEmail.value = "";
-      el.inputEmail.focus();
+    el.btnStartNamed.addEventListener("click", function () {
+      var name = el.inputPlayerName.value.trim();
+      if (!name) return;
+      startQuiz(name);
     });
 
-    el.btnSignout.addEventListener("click", function () {
-      supabase.auth.signOut().then(function () {
-        renderAuthState(null);
-      });
+    el.btnStartGuest.addEventListener("click", function () {
+      startQuiz(null);
     });
 
-    // ------------------------------------------------------------
-    // クイズ開始
-    // ------------------------------------------------------------
-    el.btnStart.addEventListener("click", startQuiz);
-    el.btnAgain.addEventListener("click", startQuiz);
+    el.btnAgain.addEventListener("click", function () {
+      el.inputPlayerName.value = state.playerName || "";
+      el.btnStartNamed.disabled = !state.playerName;
+      showScreen("start");
+    });
+
     el.btnViewLeaderboard.addEventListener("click", function () {
       loadLeaderboard().then(function () {
         el.resultScoreValue.textContent = "-";
@@ -429,11 +351,8 @@
       });
     });
 
-    function startQuiz() {
-      if (!state.session) {
-        showError("先にGitHubでログインしてください。");
-        return;
-      }
+    function startQuiz(playerName) {
+      state.playerName = playerName;
       showScreen("loading");
 
       supabase
@@ -451,16 +370,10 @@
           state.questions = picked;
           state.currentIndex = 0;
           state.correctCount = 0;
+          state.pendingAnswers = [];
+          state.sessionId = generateUUID();
+          state.startedAt = new Date().toISOString();
 
-          return supabase
-            .from("quiz_sessions")
-            .insert({ user_id: state.session.user.id, total_questions: picked.length })
-            .select()
-            .single();
-        })
-        .then(function (res) {
-          if (res.error) throw res.error;
-          state.sessionId = res.data.id;
           renderQuestion();
           showScreen("quiz");
         })
@@ -515,17 +428,12 @@
       el.btnNext.classList.remove("hidden");
       el.btnNext.textContent = state.currentIndex === state.questions.length - 1 ? "結果を見る" : "次へ";
 
-      supabase
-        .from("quiz_answers")
-        .insert({
-          session_id: state.sessionId,
-          question_id: question.id,
-          selected_choice_id: choice.id,
-          is_correct: choice.is_correct,
-        })
-        .then(function (res) {
-          if (res.error) console.error("回答の保存に失敗:", res.error.message);
-        });
+      state.pendingAnswers.push({
+        session_id: state.sessionId,
+        question_id: question.id,
+        selected_choice_id: choice.id,
+        is_correct: choice.is_correct,
+      });
     }
 
     el.btnNext.addEventListener("click", function () {
@@ -541,28 +449,38 @@
       showScreen("loading");
       var score = state.correctCount * 20;
 
+      function showResult() {
+        el.resultScoreValue.textContent = score;
+        el.resultDetail.textContent =
+          state.correctCount + " / " + state.questions.length + " 問正解" +
+          (state.playerName ? "" : "（ゲスト参加のためランキング対象外です）");
+        showScreen("result");
+      }
+
       supabase
         .from("quiz_sessions")
-        .update({
+        .insert({
+          id: state.sessionId,
+          player_name: state.playerName,
+          total_questions: state.questions.length,
           correct_count: state.correctCount,
           score: score,
+          started_at: state.startedAt,
           finished_at: new Date().toISOString(),
         })
-        .eq("id", state.sessionId)
         .then(function (res) {
           if (res.error) throw res.error;
-          return loadLeaderboard();
+          if (state.pendingAnswers.length > 0) {
+            return supabase.from("quiz_answers").insert(state.pendingAnswers);
+          }
         })
         .then(function () {
-          el.resultScoreValue.textContent = score;
-          el.resultDetail.textContent = state.correctCount + " / " + state.questions.length + " 問正解";
-          showScreen("result");
+          return loadLeaderboard();
         })
+        .then(showResult)
         .catch(function (err) {
           showError("結果の保存に失敗しました: " + err.message);
-          el.resultScoreValue.textContent = score;
-          el.resultDetail.textContent = state.correctCount + " / " + state.questions.length + " 問正解";
-          showScreen("result");
+          showResult();
         });
     }
 
@@ -596,16 +514,7 @@
     // ------------------------------------------------------------
     // 初期化
     // ------------------------------------------------------------
-    supabase.auth.getSession().then(function (res) {
-      renderAuthState(res.data.session);
-    }).catch(function (err) {
-      showError("Supabaseへの接続に失敗しました: " + err.message);
-      showScreen("auth");
-    });
-
-    supabase.auth.onAuthStateChange(function (event, session) {
-      renderAuthState(session);
-    });
+    showScreen("start");
   })();
   </script>
 </body>
