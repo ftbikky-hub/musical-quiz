@@ -41,9 +41,7 @@ export default function ScheduleShell({
 }) {
   const [topTab, setTopTab] = useState<TopTab>("search");
   const [viewMode, setViewMode] = useState<ViewMode>("card");
-  const [selectedRegionGroups, setSelectedRegionGroups] = useState
-    RegionGroupKey[]
-  >([]);
+   const [selectedRegionGroups, setSelectedRegionGroups] = useState<RegionGroupKey[]>([]);
   const [selectedWorkIds, setSelectedWorkIds] = useState<string[]>([]);
 
   const filteredSchedules = useMemo(() => {
