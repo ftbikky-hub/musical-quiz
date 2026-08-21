@@ -617,6 +617,12 @@
     var SUPABASE_URL = "https://vgmbcbseikcjkjxbyrjx.supabase.co";
     var SUPABASE_ANON_KEY = "sb_publishable_oNXZ4n-XITyKLgLRtKgVVw_UPokBcTL";
     var PASS_RATIO = 0.8;
+    // 「未正解優先」モードで、まだ正解していない問題を選ぶ確率。
+    // 100%にすると未正解の問題だけが出続けて終盤は同じ数問の反復になってしまうため、
+    // 残り2割は正解済みの問題も復習としてランダムに混ぜる。
+    var UNCORRECTED_PRIORITY_WEIGHT = 0.8;
+    // 8割達成などの合否ではなく、単純に「10問ごとに一区切り」入れるための間隔。
+    var CHECKPOINT_INTERVAL = 10;
     var DIFFICULTY_LEVELS = ["初級", "中級", "上級", "超級"];
     var TIER_BADGE = { "初級": "🔰", "中級": "⭐", "上級": "🌟", "超級": "👑" };
     var MODE_LABEL = { uncorrected: "未正解優先", random: "ランダム" };
@@ -754,6 +760,9 @@
       lastQuestionId: null,
       answered: false,
       pendingMilestone: null,
+      // 10問ごとの一区切り表示用。合否判定ではなく、単に節目で結果を見せるためのカウンター。
+      segmentAnswered: 0,
+      segmentCorrect: 0,
     };
 
     var questionPoolPromise = null; // 200問は初回だけ取得してキャッシュする
@@ -1099,6 +1108,8 @@
       state.playerName = playerName;
       state.currentTier = state.selectedDifficulty;
       state.currentMode = state.selectedMode;
+      state.segmentAnswered = 0;
+      state.segmentCorrect = 0;
       showScreen("loading");
 
       (playerName ? lookupPlayerId(playerName) : Promise.resolve(null))
@@ -1162,8 +1173,25 @@
       return bucket.slice();
     }
 
+    // 「未正解優先」モードの出題候補を決める。未正解の問題を優先しつつも、
+    // 完全に除外はせず、一定確率（1 - UNCORRECTED_PRIORITY_WEIGHT）で
+    // 正解済みの問題も復習として混ぜることで、終盤に同じ数問だけを
+    // 固定ループする体感を防ぐ。未正解が0問（そのティアを全問正解済み）の
+    // 場合は、これまで通り「出題なし」（空配列）を返す。
+    function pickWeightedUncorrectedPool(bucket) {
+      var uncorrected = bucket.filter(function (q) { return !state.correctSet.has(q.id); });
+      if (uncorrected.length === 0) return [];
+      var corrected = bucket.filter(function (q) { return state.correctSet.has(q.id); });
+      if (corrected.length === 0) return uncorrected;
+      return Math.random() < UNCORRECTED_PRIORITY_WEIGHT ? uncorrected : corrected;
+    }
+
     function pickNextQuestion() {
-      var candidates = getCandidates(state.currentTier, state.currentMode);
+      var bucket = (state.pool && state.pool[state.currentTier]) || [];
+      var candidates = state.currentMode === "uncorrected"
+        ? pickWeightedUncorrectedPool(bucket)
+        : bucket.slice();
+
       if (state.lastQuestionId && candidates.length > 1) {
         candidates = candidates.filter(function (q) { return q.id !== state.lastQuestionId; });
       }
@@ -1272,14 +1300,28 @@
 
       updateProgressDisplay();
 
+      // 10問ごとの一区切り用カウンター（合否判定ではなく、単なる節目表示）。
+      state.segmentAnswered += 1;
+      if (choice.is_correct) state.segmentCorrect += 1;
+
       var stats = computeTierStats(state.currentTier);
       var candidatesAfter = getCandidates(state.currentTier, state.currentMode);
       var justCleared = stats.ratio >= PASS_RATIO && !state.tierClearedFlags[state.currentTier];
       if (stats.ratio >= PASS_RATIO) state.tierClearedFlags[state.currentTier] = true;
       var poolExhausted = state.currentMode === "uncorrected" && candidatesAfter.length === 0;
-      state.pendingMilestone = (justCleared || poolExhausted)
-        ? { tier: state.currentTier, exhausted: poolExhausted, stats: stats }
-        : null;
+      var checkpointReached = state.segmentAnswered >= CHECKPOINT_INTERVAL;
+
+      if (justCleared || poolExhausted) {
+        state.pendingMilestone = { type: "tier", tier: state.currentTier, exhausted: poolExhausted, stats: stats };
+        state.segmentAnswered = 0;
+        state.segmentCorrect = 0;
+      } else if (checkpointReached) {
+        state.pendingMilestone = { type: "checkpoint", correct: state.segmentCorrect, total: state.segmentAnswered };
+        state.segmentAnswered = 0;
+        state.segmentCorrect = 0;
+      } else {
+        state.pendingMilestone = null;
+      }
 
       el.btnNext.classList.remove("hidden");
       el.btnNext.textContent = "次へ";
@@ -1293,24 +1335,31 @@
       }
       pickNextQuestion();
       if (!state.currentQuestion) {
-        showMilestone({ tier: state.currentTier, exhausted: true, stats: computeTierStats(state.currentTier) });
+        showMilestone({ type: "tier", tier: state.currentTier, exhausted: true, stats: computeTierStats(state.currentTier) });
         return;
       }
       renderQuestion();
     });
 
     function showMilestone(m) {
-      var tier = m.tier;
-      if (m.exhausted) {
-        el.milestoneTitle.textContent = "🎓 " + tier + " 全" + m.stats.total + "問正解！";
-        el.milestoneDetail.textContent = tier + "のすべての問題に正解しました。お見事です！";
-      } else {
-        el.milestoneTitle.textContent = TIER_BADGE[tier] + " " + tier + "突破！";
+      if (m.type === "checkpoint") {
+        // 8割達成などの合否判定ではなく、単に10問ごとの結果を知らせるだけの一区切り。
+        el.milestoneTitle.textContent = "📝 " + m.total + "問終了！";
         el.milestoneDetail.textContent =
-          tier + "で" + m.stats.correct + "/" + m.stats.total + "問正解（8割達成）。このまま続けても、別の段位に挑戦してもOKです。";
-      }
-      if (tier === "超級" && m.stats.ratio >= PASS_RATIO) {
-        el.milestoneDetail.textContent += " 🎓「ミュージカル博士」の称号を獲得しました！";
+          "直近" + m.total + "問中 " + m.correct + "問正解でした。このまま次の" + CHECKPOINT_INTERVAL + "問に進みましょう。";
+      } else {
+        var tier = m.tier;
+        if (m.exhausted) {
+          el.milestoneTitle.textContent = "🎓 " + tier + " 全" + m.stats.total + "問正解！";
+          el.milestoneDetail.textContent = tier + "のすべての問題に正解しました。お見事です！";
+        } else {
+          el.milestoneTitle.textContent = TIER_BADGE[tier] + " " + tier + "突破！";
+          el.milestoneDetail.textContent =
+            tier + "で" + m.stats.correct + "/" + m.stats.total + "問正解（8割達成）。このまま続けても、別の段位に挑戦してもOKです。";
+        }
+        if (tier === "超級" && m.stats.ratio >= PASS_RATIO) {
+          el.milestoneDetail.textContent += " 🎓「ミュージカル博士」の称号を獲得しました！";
+        }
       }
 
       var candidates = getCandidates(state.currentTier, state.currentMode);
