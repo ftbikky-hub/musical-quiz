@@ -1,0 +1,1482 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ミュージカルクイズ</title>
+<style>
+  :root {
+    --bg: #1b1023;
+    --panel: #2a1a38;
+    --panel-border: #45304f;
+    --accent: #d9a441;
+    --accent-dim: #a97e2f;
+    --text: #f4ecf7;
+    --text-dim: #c9b8d1;
+    --correct: #4caf7d;
+    --incorrect: #d9534f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: #0a0610;
+    background-image:
+      radial-gradient(ellipse 640px 380px at 50% -8%, rgba(217, 164, 65, 0.22), transparent 65%),
+      radial-gradient(ellipse 480px 480px at 8% 18%, rgba(122, 46, 46, 0.13), transparent 62%),
+      radial-gradient(ellipse 480px 480px at 92% 12%, rgba(45, 60, 110, 0.13), transparent 62%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 96px),
+      linear-gradient(180deg, #1a1024 0%, #100a18 45%, #08050c 100%);
+    background-attachment: fixed;
+    background-size: cover;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 60px;
+  }
+  .app {
+    width: 100%;
+    max-width: 520px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .bgm-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: -6px 0 20px;
+    font-size: 0.82rem;
+  }
+  .bgm-bar-label { color: var(--text-dim); white-space: nowrap; }
+  .bgm-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .bgm-pill:hover { border-color: var(--accent-dim); color: var(--text); }
+  .bgm-pill.playing { color: var(--accent); border-color: var(--accent); background: rgba(217,164,65,0.1); }
+  .bgm-pill .bgm-icon { display: inline-block; }
+  .bgm-pill.playing .bgm-icon { animation: bgm-pulse 1.6s ease-in-out infinite; }
+  .bgm-pill-stop { color: var(--text-dim); }
+  @keyframes bgm-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.65; }
+  }
+
+  .hero {
+    position: relative;
+    text-align: center;
+    padding: 26px 10px 8px;
+    margin-bottom: -4px;
+    overflow: visible;
+  }
+  .hero-glow {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(217,164,65,0.28) 0%, rgba(217,164,65,0) 70%);
+    pointer-events: none;
+  }
+  .hero-emoji {
+    font-size: 2.6rem;
+    display: inline-block;
+    position: relative;
+    animation: hero-float 4.5s ease-in-out infinite;
+  }
+  @keyframes hero-float {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+  }
+  .hero-notes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .hero-notes span {
+    position: absolute;
+    font-size: 1.1rem;
+    color: var(--accent);
+    opacity: 0;
+    animation: note-rise 6s ease-in infinite;
+  }
+  .hero-notes span:nth-child(1) { left: 18%; animation-delay: 0s; }
+  .hero-notes span:nth-child(2) { left: 48%; animation-delay: 1.8s; font-size: 0.9rem; }
+  .hero-notes span:nth-child(3) { left: 72%; animation-delay: 3.4s; }
+  .hero-notes span:nth-child(4) { left: 32%; animation-delay: 5s; font-size: 0.85rem; }
+  @keyframes note-rise {
+    0% { transform: translateY(10px) translateX(0); opacity: 0; }
+    15% { opacity: 0.85; }
+    80% { opacity: 0.4; }
+    100% { transform: translateY(-80px) translateX(10px); opacity: 0; }
+  }
+  .hero-tagline {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin: 6px 0 0;
+    letter-spacing: 0.04em;
+  }
+
+  .difficulty-select,
+  .mode-select {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .difficulty-pill,
+  .mode-pill {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .difficulty-pill:hover,
+  .mode-pill:hover { border-color: var(--accent-dim); color: var(--text); }
+  .difficulty-pill.selected,
+  .mode-pill.selected {
+    color: #241329;
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .select-label {
+    display: block;
+    text-align: left;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+  }
+
+  .quiz-progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .quiz-progress-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: #1f1329;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .quiz-progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+
+  #screen-milestone .card { text-align: center; }
+  .milestone-emoji { font-size: 2.4rem; margin-bottom: 6px; }
+
+  .player-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    padding: 10px 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tab-btn.selected { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { margin-bottom: 14px; }
+
+  .name-error {
+    text-align: left;
+    font-size: 0.82rem;
+    color: #ffb4b1;
+    margin: -8px 0 12px;
+  }
+
+  .existing-players-list {
+    max-height: 260px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .existing-player-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    text-align: left;
+  }
+  .existing-player-name { font-weight: 700; font-size: 0.92rem; word-break: break-word; }
+  .existing-player-badge { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
+  .existing-player-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .existing-player-actions button {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    border-radius: 8px;
+    padding: 6px 9px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .existing-player-actions button:hover { border-color: var(--accent-dim); color: var(--text); }
+  .existing-player-actions .btn-row-start { color: var(--accent); border-color: var(--accent-dim); }
+  .existing-player-actions .btn-row-delete { color: var(--incorrect); border-color: rgba(217,83,79,0.4); }
+  .existing-player-actions .btn-row-delete:hover { border-color: var(--incorrect); color: #ffb4b1; }
+  .existing-players-empty { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 10px 0; }
+
+  #screen-analysis .card { text-align: left; }
+  .analysis-type {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+  .analysis-sub {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin: 0 0 20px;
+  }
+  .analysis-cat-row { margin-bottom: 12px; }
+  .analysis-cat-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+  .analysis-cat-bar { height: 8px; border-radius: 999px; background: #1f1329; overflow: hidden; }
+  .analysis-cat-bar-fill { height: 100%; border-radius: 999px; background: var(--accent-dim); }
+  .analysis-cat-row.is-strong .analysis-cat-bar-fill { background: var(--correct); }
+  .analysis-cat-row.is-weak .analysis-cat-bar-fill { background: var(--incorrect); }
+  .analysis-comment { font-size: 0.85rem; color: var(--text-dim); margin: 18px 0 0; line-height: 1.7; }
+
+  .card {
+    background: rgba(42, 26, 56, 0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(217, 164, 65, 0.16);
+    border-radius: 16px;
+    padding: 28px 22px;
+    box-shadow: 0 10px 34px rgba(0,0,0,0.5);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .card { background: var(--panel); }
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.05s ease, opacity 0.15s ease;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #241329; }
+  .btn-primary:hover:not(:disabled) { background: #e6b458; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--panel-border);
+    font-weight: 500;
+  }
+  .btn-secondary:hover { color: var(--text); border-color: var(--accent-dim); }
+
+  .muted { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+
+  #screen-loading { text-align: center; color: var(--text-dim); padding: 40px 0; }
+
+  #screen-start .card { text-align: center; }
+  #screen-start h2 { margin-top: 0; }
+
+  .progress {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  .musical-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: var(--accent);
+    border: 1px solid var(--accent-dim);
+    border-radius: 999px;
+    padding: 2px 10px;
+    margin-bottom: 14px;
+  }
+  .question-text {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    margin: 0 0 20px;
+  }
+  .choices { display: flex; flex-direction: column; gap: 10px; }
+  .choice-btn {
+    text-align: left;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--panel-border);
+    background: #1f1329;
+    color: var(--text);
+    font-size: 0.98rem;
+    cursor: pointer;
+  }
+  .choice-btn:hover:not(:disabled) { border-color: var(--accent-dim); }
+  .choice-btn:disabled { cursor: default; }
+  .choice-btn { position: relative; transition: transform 0.15s ease; }
+  .choice-btn.correct {
+    background: rgba(76, 175, 125, 0.32);
+    border-color: var(--correct);
+    border-width: 2px;
+    color: #eafff2;
+    font-weight: 700;
+    animation: choice-pop 0.35s ease;
+  }
+  .choice-btn.incorrect {
+    background: rgba(217, 83, 79, 0.32);
+    border-color: var(--incorrect);
+    border-width: 2px;
+    color: #ffecec;
+    font-weight: 700;
+    animation: choice-shake 0.4s ease;
+  }
+  .choice-btn.correct::after,
+  .choice-btn.incorrect::after {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.15rem;
+  }
+  .choice-btn.correct::after { content: "◯"; color: var(--correct); }
+  .choice-btn.incorrect::after { content: "✕"; color: var(--incorrect); }
+  @keyframes choice-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.035); }
+    100% { transform: scale(1); }
+  }
+  @keyframes choice-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(2px); }
+  }
+
+  .quiz-feedback {
+    margin-top: 18px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .quiz-feedback.correct { background: rgba(76, 175, 125, 0.16); color: var(--correct); border: 1px solid var(--correct); }
+  .quiz-feedback.incorrect { background: rgba(217, 83, 79, 0.16); color: var(--incorrect); border: 1px solid var(--incorrect); }
+
+  .explanation {
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: #17101d;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .result-score {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+  .result-score .big {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .leaderboard { margin-top: 22px; }
+  .leaderboard h3 { font-size: 0.95rem; color: var(--text-dim); margin-bottom: 10px; }
+  .leaderboard ol { margin: 0; padding-left: 22px; }
+  .leaderboard li {
+    padding: 6px 0;
+    font-size: 0.92rem;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    justify-content: space-between;
+  }
+  .leaderboard li:last-child { border-bottom: none; }
+
+  .error-toast {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(217, 83, 79, 0.15);
+    border: 1px solid var(--incorrect);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: #f3c9c8;
+  }
+  .hidden { display: none !important; }
+  .spacer { height: 14px; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a href="/" style="position:absolute;top:14px;left:14px;font-size:0.8rem;color:inherit;opacity:0.75;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">← 入り口に戻る</a>
+      <h1>🎭 <span>ミュージカル</span>クイズ</h1>
+    </header>
+
+    <div class="bgm-bar">
+      <span class="bgm-bar-label">🎵 BGM</span>
+      <button id="btn-bgm-orchestra" class="bgm-pill" type="button" data-track="orchestra">
+        <span class="bgm-icon">🔈</span>オケ風
+      </button>
+      <button id="btn-bgm-paris" class="bgm-pill" type="button" data-track="paris">
+        <span class="bgm-icon">🔈</span>パリ風
+      </button>
+      <button id="btn-bgm-stop" class="bgm-pill bgm-pill-stop hidden" type="button">停止</button>
+    </div>
+
+    <audio id="audio-orchestra" src="./bgmorchestra.mp3" loop preload="none"></audio>
+    <audio id="audio-paris" src="./bgmparis.mp3" loop preload="none"></audio>
+
+    <div id="screen-loading">
+      <p>読み込み中...</p>
+    </div>
+
+    <div id="screen-start" class="hidden">
+      <div class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-notes"><span>♪</span><span>♫</span><span>♪</span><span>♬</span></div>
+        <span class="hero-emoji">🎟️🎶🎭</span>
+        <p class="hero-tagline">さあ、幕を開けよう</p>
+      </div>
+      <div class="card">
+        <h2>クイズを始めよう</h2>
+        <p class="muted">お名前は入力するとそのまま「あなたの記録」になります。何度でも遊びに来て、正解を積み上げていけます。各段位は8割正解でクリアです。</p>
+
+        <label class="select-label muted">挑戦する段位</label>
+        <div class="difficulty-select" id="difficulty-select">
+          <button type="button" class="difficulty-pill" data-difficulty="初級">初級</button>
+          <button type="button" class="difficulty-pill" data-difficulty="中級">中級</button>
+          <button type="button" class="difficulty-pill" data-difficulty="上級">上級</button>
+          <button type="button" class="difficulty-pill" data-difficulty="超級">超級</button>
+        </div>
+
+        <label class="select-label muted">出題モード</label>
+        <div class="mode-select" id="mode-select">
+          <button type="button" class="mode-pill" data-mode="uncorrected">未正解優先</button>
+          <button type="button" class="mode-pill" data-mode="random">ランダム（復習）</button>
+        </div>
+
+        <div class="player-tabs">
+          <button type="button" id="tab-new" class="tab-btn selected">新規登録</button>
+          <button type="button" id="tab-existing" class="tab-btn">登録済みから選ぶ</button>
+        </div>
+
+        <div id="panel-new" class="tab-panel">
+          <label for="input-player-name" class="muted" style="display:block;text-align:left;margin-bottom:6px;font-size:0.85rem;">
+            お名前（新規登録。すでに使われている名前は選べません）
+          </label>
+          <input
+            id="input-player-name"
+            type="text"
+            maxlength="20"
+            placeholder="例）びっきぃ"
+            style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:#1f1329;color:var(--text);font-size:0.98rem;margin-bottom:8px;"
+          />
+          <p class="name-error hidden" id="name-error"></p>
+          <button id="btn-start-named" class="btn btn-primary" disabled>この名前で登録してスタート</button>
+        </div>
+
+        <div id="panel-existing" class="tab-panel hidden">
+          <p class="muted" style="margin-top:0;font-size:0.85rem;">成績を見て、自分の名前を選んでください。</p>
+          <div class="existing-players-list" id="existing-players-list">
+            <div class="existing-players-empty">読み込み中...</div>
+          </div>
+        </div>
+
+        <button id="btn-start-guest" class="btn btn-secondary">ゲストとして始める</button>
+        <div class="spacer"></div>
+        <button id="btn-view-leaderboard" class="btn btn-secondary">ランキングを見る</button>
+      </div>
+    </div>
+
+    <div id="screen-analysis" class="hidden">
+      <div class="card">
+        <p class="analysis-type" id="analysis-type">診断中...</p>
+        <p class="analysis-sub" id="analysis-sub"></p>
+        <div id="analysis-categories"></div>
+        <p class="analysis-comment" id="analysis-comment"></p>
+        <div class="spacer"></div>
+        <button id="btn-analysis-back" class="btn btn-primary">スタート画面に戻る</button>
+      </div>
+    </div>
+
+    <div id="screen-quiz" class="hidden">
+      <div class="card">
+        <div class="quiz-progress-row">
+          <span id="quiz-progress">0/0 正解</span>
+          <span id="quiz-mode-label"></span>
+        </div>
+        <div class="quiz-progress-bar"><div class="quiz-progress-bar-fill" id="quiz-progress-bar-fill" style="width:0%"></div></div>
+        <div class="musical-tag" id="quiz-musical"></div>
+        <p class="question-text" id="quiz-question"></p>
+        <div class="choices" id="quiz-choices"></div>
+        <div class="quiz-feedback hidden" id="quiz-feedback"></div>
+        <div class="explanation hidden" id="quiz-explanation"></div>
+        <div class="spacer"></div>
+        <button id="btn-next" class="btn btn-primary hidden">次へ</button>
+        <div class="spacer"></div>
+        <button id="btn-quiz-stop" class="btn btn-secondary">一旦やめる</button>
+      </div>
+    </div>
+
+    <div id="screen-milestone" class="hidden">
+      <div class="card">
+        <div class="milestone-emoji">🎉</div>
+        <h2 id="milestone-title">突破！</h2>
+        <p class="muted" id="milestone-detail"></p>
+        <button id="btn-milestone-continue" class="btn btn-primary">このまま続ける</button>
+        <div class="spacer"></div>
+        <button id="btn-milestone-back" class="btn btn-secondary">スタート画面に戻る</button>
+      </div>
+    </div>
+
+    <div id="screen-result" class="hidden">
+      <div class="card">
+        <h3 style="margin-top:0;">🏆 ランキング（トップ5）</h3>
+        <ol id="leaderboard-list"></ol>
+        <div class="spacer"></div>
+        <button id="btn-back-from-leaderboard" class="btn btn-primary">スタート画面に戻る</button>
+      </div>
+    </div>
+
+    <div id="error-box" class="error-toast hidden"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    // ------------------------------------------------------------
+    // 設定: あなたのSupabaseプロジェクトの情報
+    // ------------------------------------------------------------
+    var SUPABASE_URL = "https://vgmbcbseikcjkjxbyrjx.supabase.co";
+    var SUPABASE_ANON_KEY = "sb_publishable_oNXZ4n-XITyKLgLRtKgVVw_UPokBcTL";
+    var PASS_RATIO = 0.8;
+    var DIFFICULTY_LEVELS = ["初級", "中級", "上級", "超級"];
+    var TIER_BADGE = { "初級": "🔰", "中級": "⭐", "上級": "🌟", "超級": "👑" };
+    var MODE_LABEL = { uncorrected: "未正解優先", random: "ランダム" };
+
+    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ------------------------------------------------------------
+    // BGM（AIで作成した楽曲を選んで再生）
+    // ------------------------------------------------------------
+    var audioOrchestra = document.getElementById("audio-orchestra");
+    var audioParis = document.getElementById("audio-paris");
+    var btnBgmOrchestra = document.getElementById("btn-bgm-orchestra");
+    var btnBgmParis = document.getElementById("btn-bgm-paris");
+    var btnBgmStop = document.getElementById("btn-bgm-stop");
+
+    var BGM_TRACKS = {
+      orchestra: { audio: audioOrchestra, button: btnBgmOrchestra },
+      paris: { audio: audioParis, button: btnBgmParis }
+    };
+    var currentBgmKey = null;
+
+    function updateBgmButtons() {
+      Object.keys(BGM_TRACKS).forEach(function (key) {
+        var track = BGM_TRACKS[key];
+        var playing = currentBgmKey === key;
+        track.button.classList.toggle("playing", playing);
+        track.button.setAttribute("aria-pressed", playing ? "true" : "false");
+        track.button.querySelector(".bgm-icon").textContent = playing ? "🔊" : "🔈";
+      });
+      btnBgmStop.classList.toggle("hidden", !currentBgmKey);
+    }
+
+    function stopAllBgm() {
+      Object.keys(BGM_TRACKS).forEach(function (key) {
+        var audio = BGM_TRACKS[key].audio;
+        audio.pause();
+        audio.currentTime = 0;
+      });
+      currentBgmKey = null;
+      updateBgmButtons();
+    }
+
+    function playBgm(key) {
+      Object.keys(BGM_TRACKS).forEach(function (k) {
+        if (k !== key) {
+          BGM_TRACKS[k].audio.pause();
+          BGM_TRACKS[k].audio.currentTime = 0;
+        }
+      });
+      var playPromise = BGM_TRACKS[key].audio.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(function () {
+          // 自動再生がブロックされた場合などは静かに無視（ボタン操作は反映済み）
+        });
+      }
+      currentBgmKey = key;
+      updateBgmButtons();
+    }
+
+    function toggleBgm(key) {
+      if (currentBgmKey === key) {
+        stopAllBgm();
+      } else {
+        playBgm(key);
+      }
+    }
+
+    btnBgmOrchestra.addEventListener("click", function () {
+      toggleBgm("orchestra");
+    });
+    btnBgmParis.addEventListener("click", function () {
+      toggleBgm("paris");
+    });
+    btnBgmStop.addEventListener("click", function () {
+      stopAllBgm();
+    });
+
+    // ------------------------------------------------------------
+    // DOM参照
+    // ------------------------------------------------------------
+    var el = {
+      loading: document.getElementById("screen-loading"),
+      start: document.getElementById("screen-start"),
+      quiz: document.getElementById("screen-quiz"),
+      milestone: document.getElementById("screen-milestone"),
+      result: document.getElementById("screen-result"),
+      analysis: document.getElementById("screen-analysis"),
+      difficultySelect: document.getElementById("difficulty-select"),
+      modeSelect: document.getElementById("mode-select"),
+      tabNew: document.getElementById("tab-new"),
+      tabExisting: document.getElementById("tab-existing"),
+      panelNew: document.getElementById("panel-new"),
+      panelExisting: document.getElementById("panel-existing"),
+      existingPlayersList: document.getElementById("existing-players-list"),
+      nameError: document.getElementById("name-error"),
+      inputPlayerName: document.getElementById("input-player-name"),
+      btnStartNamed: document.getElementById("btn-start-named"),
+      btnStartGuest: document.getElementById("btn-start-guest"),
+      btnViewLeaderboard: document.getElementById("btn-view-leaderboard"),
+      btnBackFromLeaderboard: document.getElementById("btn-back-from-leaderboard"),
+      btnAnalysisBack: document.getElementById("btn-analysis-back"),
+      analysisType: document.getElementById("analysis-type"),
+      analysisSub: document.getElementById("analysis-sub"),
+      analysisCategories: document.getElementById("analysis-categories"),
+      analysisComment: document.getElementById("analysis-comment"),
+      btnNext: document.getElementById("btn-next"),
+      btnQuizStop: document.getElementById("btn-quiz-stop"),
+      btnMilestoneContinue: document.getElementById("btn-milestone-continue"),
+      btnMilestoneBack: document.getElementById("btn-milestone-back"),
+      milestoneTitle: document.getElementById("milestone-title"),
+      milestoneDetail: document.getElementById("milestone-detail"),
+      quizProgress: document.getElementById("quiz-progress"),
+      quizModeLabel: document.getElementById("quiz-mode-label"),
+      quizProgressBarFill: document.getElementById("quiz-progress-bar-fill"),
+      quizMusical: document.getElementById("quiz-musical"),
+      quizQuestion: document.getElementById("quiz-question"),
+      quizChoices: document.getElementById("quiz-choices"),
+      quizFeedback: document.getElementById("quiz-feedback"),
+      quizExplanation: document.getElementById("quiz-explanation"),
+      leaderboardList: document.getElementById("leaderboard-list"),
+      errorBox: document.getElementById("error-box"),
+    };
+
+    var state = {
+      playerId: null,
+      playerName: null,
+      selectedDifficulty: "初級",
+      selectedMode: "uncorrected",
+      currentTier: "初級",
+      currentMode: "uncorrected",
+      pool: null,
+      correctSet: null,
+      tierClearedFlags: {},
+      currentQuestion: null,
+      lastQuestionId: null,
+      answered: false,
+      pendingMilestone: null,
+    };
+
+    var questionPoolPromise = null; // 200問は初回だけ取得してキャッシュする
+
+    function showScreen(name) {
+      ["loading", "start", "quiz", "milestone", "result", "analysis"].forEach(function (key) {
+        el[key].classList.toggle("hidden", key !== name);
+      });
+    }
+
+    // ------------------------------------------------------------
+    // 出題傾向カテゴリ（タイプ診断用）
+    // ------------------------------------------------------------
+    var TOPIC_CATEGORIES = ["キャスト・俳優", "記録・データ", "舞台裏トリビア", "劇団四季", "楽曲", "あらすじ・キャラクター"];
+    var TYPE_LABEL = {
+      "キャスト・俳優": "🎭 キャスト表暗記タイプ",
+      "記録・データ": "📊 ロングラン記録オタクタイプ",
+      "舞台裏トリビア": "🔧 舞台裏マニアタイプ",
+      "劇団四季": "🗼 四季劇場通い詰めタイプ",
+      "楽曲": "🎵 サントラ脳内再生タイプ",
+      "あらすじ・キャラクター": "📖 物語どっぷり没入タイプ",
+    };
+    var TYPE_COMMENT = {
+      "キャスト・俳優": "誰が何を演じたか、演出家や振付師の名前まで頭に入っている「楽屋通」タイプです。",
+      "記録・データ": "ロングラン記録やトニー賞の受賞歴など、数字とデータに強い「ミュージカル統計マニア」タイプです。",
+      "舞台裏トリビア": "舞台装置や衣装、特殊メイクなど「どう作られているか」に目が行く舞台裏派です。",
+      "劇団四季": "劇団四季の歴史や劇場、独自メソッドまで詳しい、生粋の四季ファンタイプです。",
+      "楽曲": "曲名やメロディが真っ先に思い浮かぶ、耳で覚えている音楽派タイプです。",
+      "あらすじ・キャラクター": "物語やキャラクターの心情にどっぷり浸かって観る、王道の物語派タイプです。",
+    };
+
+    // ------------------------------------------------------------
+    // 難易度・出題モード選択
+    // ------------------------------------------------------------
+    var difficultyButtons = el.difficultySelect.querySelectorAll(".difficulty-pill");
+    function setSelectedDifficulty(value) {
+      state.selectedDifficulty = value;
+      difficultyButtons.forEach(function (b) {
+        b.classList.toggle("selected", b.getAttribute("data-difficulty") === value);
+      });
+    }
+    difficultyButtons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        setSelectedDifficulty(b.getAttribute("data-difficulty"));
+      });
+    });
+    setSelectedDifficulty(state.selectedDifficulty);
+
+    var modeButtons = el.modeSelect.querySelectorAll(".mode-pill");
+    function setSelectedMode(value) {
+      state.selectedMode = value;
+      modeButtons.forEach(function (b) {
+        b.classList.toggle("selected", b.getAttribute("data-mode") === value);
+      });
+    }
+    modeButtons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        setSelectedMode(b.getAttribute("data-mode"));
+      });
+    });
+    setSelectedMode(state.selectedMode);
+
+    function generateUUID() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      // 古いブラウザ向けの簡易フォールバック
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+        var r = (Math.random() * 16) | 0;
+        var v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    }
+
+    function showError(message) {
+      el.errorBox.textContent = message;
+      el.errorBox.classList.remove("hidden");
+      window.setTimeout(function () {
+        el.errorBox.classList.add("hidden");
+      }, 6000);
+    }
+
+    function shuffle(array) {
+      var copy = array.slice();
+      for (var i = copy.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = copy[i];
+        copy[i] = copy[j];
+        copy[j] = tmp;
+      }
+      return copy;
+    }
+
+    // ------------------------------------------------------------
+    // 問題データ（200問）は初回のみ取得してキャッシュ
+    // ------------------------------------------------------------
+    function getQuestionPool() {
+      if (!questionPoolPromise) {
+        questionPoolPromise = supabase
+          .from("questions")
+          .select("id, question_text, explanation, difficulty, topic_category, choices(id, choice_text, is_correct, sort_order)")
+          .then(function (res) {
+            if (res.error) throw res.error;
+            if (!res.data || res.data.length === 0) {
+              throw new Error("問題データが見つかりませんでした。");
+            }
+            var pool = {};
+            DIFFICULTY_LEVELS.forEach(function (level) { pool[level] = []; });
+            res.data.forEach(function (q) {
+              q.choices = q.choices.slice().sort(function (a, b) { return a.sort_order - b.sort_order; });
+              if (pool[q.difficulty]) pool[q.difficulty].push(q);
+            });
+            return pool;
+          })
+          .catch(function (err) {
+            questionPoolPromise = null; // 失敗時は次回また取得を試みる
+            throw err;
+          });
+      }
+      return questionPoolPromise;
+    }
+
+    // ------------------------------------------------------------
+    // プレイヤー名の登録・照会
+    // ------------------------------------------------------------
+    // 新規登録: 既に使われている名前ならエラーにする（意図しない名前かぶりを防ぐ）
+    function registerNewPlayer(name) {
+      return supabase
+        .from("players")
+        .select("id")
+        .eq("display_name", name)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          if (res.data && res.data.length > 0) {
+            var takenErr = new Error("NAME_TAKEN");
+            takenErr.nameTaken = true;
+            throw takenErr;
+          }
+          var newId = generateUUID();
+          return supabase
+            .from("players")
+            .insert({ id: newId, display_name: name })
+            .then(function (insRes) {
+              if (insRes.error) {
+                // ほぼ同時に同じ名前で登録された等のレースも「登録済み」として扱う
+                var takenErr2 = new Error("NAME_TAKEN");
+                takenErr2.nameTaken = true;
+                throw takenErr2;
+              }
+              return newId;
+            });
+        });
+    }
+
+    // 登録済みプレイヤーの照会（一覧から選ぶ場合。必ず存在する前提）
+    function lookupPlayerId(name) {
+      return supabase
+        .from("players")
+        .select("id")
+        .eq("display_name", name)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          if (res.data && res.data.length > 0) return res.data[0].id;
+          throw new Error("プレイヤーが見つかりませんでした。");
+        });
+    }
+
+    // プレイヤー削除（登録済み一覧から）。正解記録・解答ログも連動して消える。
+    function deletePlayer(name) {
+      return supabase
+        .from("players")
+        .delete()
+        .eq("display_name", name)
+        .then(function (res) {
+          if (res.error) throw res.error;
+        });
+    }
+
+    function formatBadge(row) {
+      if (row.cleared_top) {
+        return "🎓 博士（" + row.total_correct + "/" + row.total_questions + "）";
+      }
+      if (row.reached_difficulty) {
+        return TIER_BADGE[row.reached_difficulty] + " " + row.reached_difficulty + "突破（" + row.total_correct + "/" + row.total_questions + "）";
+      }
+      return "挑戦中（" + row.total_correct + "/" + row.total_questions + "）";
+    }
+
+    // ------------------------------------------------------------
+    // 開始画面
+    // ------------------------------------------------------------
+    el.tabNew.addEventListener("click", function () {
+      el.tabNew.classList.add("selected");
+      el.tabExisting.classList.remove("selected");
+      el.panelNew.classList.remove("hidden");
+      el.panelExisting.classList.add("hidden");
+    });
+
+    el.tabExisting.addEventListener("click", function () {
+      el.tabExisting.classList.add("selected");
+      el.tabNew.classList.remove("selected");
+      el.panelExisting.classList.remove("hidden");
+      el.panelNew.classList.add("hidden");
+      loadExistingPlayers();
+    });
+
+    function loadExistingPlayers() {
+      el.existingPlayersList.innerHTML = '<div class="existing-players-empty">読み込み中...</div>';
+      return supabase
+        .from("leaderboard")
+        .select("*")
+        .order("reached_level", { ascending: false })
+        .order("total_correct", { ascending: false })
+        .then(function (res) {
+          el.existingPlayersList.innerHTML = "";
+          if (res.error || !res.data || res.data.length === 0) {
+            el.existingPlayersList.innerHTML = '<div class="existing-players-empty">まだ登録されているプレイヤーがいません</div>';
+            return;
+          }
+          res.data.forEach(function (row) {
+            var wrap = document.createElement("div");
+            wrap.className = "existing-player-row";
+
+            var info = document.createElement("div");
+            var nameDiv = document.createElement("div");
+            nameDiv.className = "existing-player-name";
+            nameDiv.textContent = row.display_name;
+            var badgeDiv = document.createElement("div");
+            badgeDiv.className = "existing-player-badge";
+            badgeDiv.textContent = formatBadge(row);
+            info.appendChild(nameDiv);
+            info.appendChild(badgeDiv);
+
+            var actions = document.createElement("div");
+            actions.className = "existing-player-actions";
+            var startBtn = document.createElement("button");
+            startBtn.type = "button";
+            startBtn.className = "btn-row-start";
+            startBtn.textContent = "スタート";
+            startBtn.addEventListener("click", function () {
+              startQuiz(row.display_name);
+            });
+            var analysisBtn = document.createElement("button");
+            analysisBtn.type = "button";
+            analysisBtn.textContent = "📊 分析";
+            analysisBtn.addEventListener("click", function () {
+              showAnalysis(row.display_name);
+            });
+            var deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "btn-row-delete";
+            deleteBtn.textContent = "🗑削除";
+            deleteBtn.addEventListener("click", function () {
+              var ok = window.confirm(
+                row.display_name + " を削除しますか？\n" +
+                "この操作は取り消せません。正解記録・解答履歴もすべて消えます。"
+              );
+              if (!ok) return;
+              deleteBtn.disabled = true;
+              deletePlayer(row.display_name)
+                .then(function () {
+                  loadExistingPlayers();
+                })
+                .catch(function (err) {
+                  deleteBtn.disabled = false;
+                  showError("削除に失敗しました: " + err.message);
+                });
+            });
+            actions.appendChild(startBtn);
+            actions.appendChild(analysisBtn);
+            actions.appendChild(deleteBtn);
+
+            wrap.appendChild(info);
+            wrap.appendChild(actions);
+            el.existingPlayersList.appendChild(wrap);
+          });
+        })
+        .catch(function () {
+          el.existingPlayersList.innerHTML = '<div class="existing-players-empty">読み込みに失敗しました</div>';
+        });
+    }
+
+    el.inputPlayerName.addEventListener("input", function () {
+      el.btnStartNamed.disabled = el.inputPlayerName.value.trim().length === 0;
+      el.nameError.classList.add("hidden");
+    });
+
+    el.inputPlayerName.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !el.btnStartNamed.disabled) {
+        e.preventDefault();
+        el.btnStartNamed.click();
+      }
+    });
+
+    el.btnStartNamed.addEventListener("click", function () {
+      var name = el.inputPlayerName.value.trim();
+      if (!name) return;
+      el.nameError.classList.add("hidden");
+      el.btnStartNamed.disabled = true;
+      registerNewPlayer(name)
+        .then(function () {
+          startQuiz(name);
+        })
+        .catch(function (err) {
+          el.btnStartNamed.disabled = false;
+          if (err.nameTaken) {
+            el.nameError.textContent = "その名前は既に登録されています。「登録済みから選ぶ」タブからお選びください。";
+          } else {
+            el.nameError.textContent = "登録に失敗しました: " + err.message;
+          }
+          el.nameError.classList.remove("hidden");
+        });
+    });
+
+    el.btnStartGuest.addEventListener("click", function () {
+      startQuiz(null);
+    });
+
+    el.btnQuizStop.addEventListener("click", function () {
+      showScreen("start");
+    });
+
+    el.btnMilestoneBack.addEventListener("click", function () {
+      showScreen("start");
+    });
+
+    el.btnBackFromLeaderboard.addEventListener("click", function () {
+      showScreen("start");
+    });
+
+    el.btnAnalysisBack.addEventListener("click", function () {
+      showScreen("start");
+    });
+
+    el.btnViewLeaderboard.addEventListener("click", function () {
+      showScreen("loading");
+      loadLeaderboard().then(function () {
+        showScreen("result");
+      });
+    });
+
+    function startQuiz(playerName) {
+      state.playerName = playerName;
+      state.currentTier = state.selectedDifficulty;
+      state.currentMode = state.selectedMode;
+      showScreen("loading");
+
+      (playerName ? lookupPlayerId(playerName) : Promise.resolve(null))
+        .then(function (playerId) {
+          state.playerId = playerId;
+          return getQuestionPool().then(function (pool) {
+            state.pool = pool;
+            if (!playerId) {
+              state.correctSet = new Set();
+              return;
+            }
+            return supabase
+              .from("question_progress")
+              .select("question_id")
+              .eq("player_id", playerId)
+              .then(function (res) {
+                if (res.error) throw res.error;
+                state.correctSet = new Set((res.data || []).map(function (r) { return r.question_id; }));
+              });
+          });
+        })
+        .then(function () {
+          initTierClearedFlags();
+          pickNextQuestion();
+          if (!state.currentQuestion) {
+            showError("「" + state.currentTier + "」は現在のモードで出題できる問題がありません。モードを変えてみてください。");
+            showScreen("start");
+            return;
+          }
+          renderQuestion();
+          showScreen("quiz");
+        })
+        .catch(function (err) {
+          showError("クイズの開始に失敗しました: " + err.message);
+          showScreen("start");
+        });
+    }
+
+    function initTierClearedFlags() {
+      state.tierClearedFlags = {};
+      DIFFICULTY_LEVELS.forEach(function (tier) {
+        state.tierClearedFlags[tier] = computeTierStats(tier).ratio >= PASS_RATIO;
+      });
+    }
+
+    function computeTierStats(tier) {
+      var bucket = (state.pool && state.pool[tier]) || [];
+      var correct = bucket.filter(function (q) { return state.correctSet.has(q.id); }).length;
+      return {
+        correct: correct,
+        total: bucket.length,
+        ratio: bucket.length > 0 ? correct / bucket.length : 0,
+      };
+    }
+
+    function getCandidates(tier, mode) {
+      var bucket = (state.pool && state.pool[tier]) || [];
+      if (mode === "uncorrected") {
+        return bucket.filter(function (q) { return !state.correctSet.has(q.id); });
+      }
+      return bucket.slice();
+    }
+
+    function pickNextQuestion() {
+      var candidates = getCandidates(state.currentTier, state.currentMode);
+      if (state.lastQuestionId && candidates.length > 1) {
+        candidates = candidates.filter(function (q) { return q.id !== state.lastQuestionId; });
+      }
+      if (candidates.length === 0) {
+        state.currentQuestion = null;
+        return;
+      }
+      state.currentQuestion = candidates[Math.floor(Math.random() * candidates.length)];
+      state.lastQuestionId = state.currentQuestion.id;
+    }
+
+    function updateProgressDisplay() {
+      var stats = computeTierStats(state.currentTier);
+      el.quizProgress.textContent = TIER_BADGE[state.currentTier] + " " + state.currentTier + "  " + stats.correct + "/" + stats.total + "問正解";
+      el.quizModeLabel.textContent = MODE_LABEL[state.currentMode];
+      el.quizProgressBarFill.style.width = Math.min(100, stats.ratio * 100) + "%";
+    }
+
+    function renderQuestion() {
+      state.answered = false;
+      var q = state.currentQuestion;
+      updateProgressDisplay();
+      el.quizMusical.textContent = state.correctSet.has(q.id) ? "✓ 正解済みの問題（復習）" : "未正解の問題";
+      el.quizQuestion.textContent = q.question_text;
+      el.quizExplanation.classList.add("hidden");
+      el.quizExplanation.textContent = "";
+      el.quizFeedback.classList.add("hidden");
+      el.quizFeedback.className = "quiz-feedback hidden";
+      el.quizFeedback.textContent = "";
+      el.btnNext.classList.add("hidden");
+
+      el.quizChoices.innerHTML = "";
+      shuffle(q.choices).forEach(function (choice) {
+        var btn = document.createElement("button");
+        btn.className = "choice-btn";
+        btn.textContent = choice.choice_text;
+        btn.addEventListener("click", function () {
+          selectChoice(q, choice, btn);
+        });
+        el.quizChoices.appendChild(btn);
+      });
+    }
+
+    function selectChoice(question, choice, btnEl) {
+      if (state.answered) return;
+      state.answered = true;
+
+      var buttons = el.quizChoices.querySelectorAll(".choice-btn");
+      buttons.forEach(function (b) { b.disabled = true; });
+
+      question.choices.forEach(function (c) {
+        if (c.is_correct) {
+          var match = Array.prototype.find.call(buttons, function (b) { return b.textContent === c.choice_text; });
+          if (match) match.classList.add("correct");
+        }
+      });
+      if (!choice.is_correct) btnEl.classList.add("incorrect");
+
+      if (choice.is_correct) {
+        el.quizFeedback.textContent = "◯ 正解！";
+        el.quizFeedback.className = "quiz-feedback correct";
+      } else {
+        var correctChoice = question.choices.filter(function (c) { return c.is_correct; })[0];
+        el.quizFeedback.textContent = "✕ 不正解… 正解は「" + (correctChoice ? correctChoice.choice_text : "?") + "」";
+        el.quizFeedback.className = "quiz-feedback incorrect";
+      }
+
+      if (question.explanation) {
+        el.quizExplanation.textContent = question.explanation;
+        el.quizExplanation.classList.remove("hidden");
+      }
+
+      // 正解フラグは一度立てたら消さない（既に正解済みなら何もしない）
+      var newlyCorrect = choice.is_correct && !state.correctSet.has(question.id);
+      if (newlyCorrect) {
+        state.correctSet.add(question.id);
+      }
+
+      if (state.playerId) {
+        supabase
+          .from("quiz_answer_log")
+          .insert({
+            player_id: state.playerId,
+            question_id: question.id,
+            selected_choice_id: choice.id,
+            is_correct: choice.is_correct,
+          })
+          .then(function (res) {
+            if (res.error) console.warn("解答ログの保存に失敗しました", res.error);
+          })
+          .catch(function (err) { console.warn("解答ログの保存に失敗しました", err); });
+
+        if (newlyCorrect) {
+          supabase
+            .from("question_progress")
+            .upsert(
+              { player_id: state.playerId, question_id: question.id },
+              { onConflict: "player_id,question_id", ignoreDuplicates: true }
+            )
+            .then(function (res) {
+              if (res.error) console.warn("正解フラグの保存に失敗しました", res.error);
+            })
+            .catch(function (err) { console.warn("正解フラグの保存に失敗しました", err); });
+        }
+      }
+
+      updateProgressDisplay();
+
+      var stats = computeTierStats(state.currentTier);
+      var candidatesAfter = getCandidates(state.currentTier, state.currentMode);
+      var justCleared = stats.ratio >= PASS_RATIO && !state.tierClearedFlags[state.currentTier];
+      if (stats.ratio >= PASS_RATIO) state.tierClearedFlags[state.currentTier] = true;
+      var poolExhausted = state.currentMode === "uncorrected" && candidatesAfter.length === 0;
+      state.pendingMilestone = (justCleared || poolExhausted)
+        ? { tier: state.currentTier, exhausted: poolExhausted, stats: stats }
+        : null;
+
+      el.btnNext.classList.remove("hidden");
+      el.btnNext.textContent = "次へ";
+    }
+
+    el.btnNext.addEventListener("click", function () {
+      if (state.pendingMilestone) {
+        showMilestone(state.pendingMilestone);
+        state.pendingMilestone = null;
+        return;
+      }
+      pickNextQuestion();
+      if (!state.currentQuestion) {
+        showMilestone({ tier: state.currentTier, exhausted: true, stats: computeTierStats(state.currentTier) });
+        return;
+      }
+      renderQuestion();
+    });
+
+    function showMilestone(m) {
+      var tier = m.tier;
+      if (m.exhausted) {
+        el.milestoneTitle.textContent = "🎓 " + tier + " 全" + m.stats.total + "問正解！";
+        el.milestoneDetail.textContent = tier + "のすべての問題に正解しました。お見事です！";
+      } else {
+        el.milestoneTitle.textContent = TIER_BADGE[tier] + " " + tier + "突破！";
+        el.milestoneDetail.textContent =
+          tier + "で" + m.stats.correct + "/" + m.stats.total + "問正解（8割達成）。このまま続けても、別の段位に挑戦してもOKです。";
+      }
+      if (tier === "超級" && m.stats.ratio >= PASS_RATIO) {
+        el.milestoneDetail.textContent += " 🎓「ミュージカル博士」の称号を獲得しました！";
+      }
+
+      var candidates = getCandidates(state.currentTier, state.currentMode);
+      el.btnMilestoneContinue.classList.toggle("hidden", candidates.length === 0);
+
+      showScreen("milestone");
+    }
+
+    el.btnMilestoneContinue.addEventListener("click", function () {
+      pickNextQuestion();
+      if (!state.currentQuestion) {
+        showScreen("start");
+        return;
+      }
+      renderQuestion();
+      showScreen("quiz");
+    });
+
+    function loadLeaderboard() {
+      return supabase
+        .from("leaderboard")
+        .select("*")
+        .order("reached_level", { ascending: false })
+        .order("total_correct", { ascending: false })
+        .limit(5)
+        .then(function (res) {
+          el.leaderboardList.innerHTML = "";
+          if (res.error || !res.data || res.data.length === 0) {
+            var li = document.createElement("li");
+            li.textContent = "まだ記録がありません";
+            el.leaderboardList.appendChild(li);
+            return;
+          }
+          res.data.forEach(function (row) {
+            var li = document.createElement("li");
+            var nameSpan = document.createElement("span");
+            nameSpan.textContent = row.display_name || "プレイヤー";
+            var badgeSpan = document.createElement("span");
+            badgeSpan.textContent = formatBadge(row);
+            li.appendChild(nameSpan);
+            li.appendChild(badgeSpan);
+            el.leaderboardList.appendChild(li);
+          });
+        });
+    }
+
+    // ------------------------------------------------------------
+    // タイプ診断（プレイヤーの得意・不得意カテゴリを分析）
+    // ------------------------------------------------------------
+    function computeCategoryStats(allQuestions, correctSet) {
+      var stats = {};
+      TOPIC_CATEGORIES.forEach(function (cat) {
+        var bucket = allQuestions.filter(function (q) { return q.topic_category === cat; });
+        var correct = bucket.filter(function (q) { return correctSet.has(q.id); }).length;
+        stats[cat] = {
+          correct: correct,
+          total: bucket.length,
+          ratio: bucket.length > 0 ? correct / bucket.length : 0,
+        };
+      });
+      return stats;
+    }
+
+    function showAnalysis(name) {
+      showScreen("loading");
+      lookupPlayerId(name)
+        .then(function (playerId) {
+          return getQuestionPool().then(function (pool) {
+            var allQuestions = DIFFICULTY_LEVELS.reduce(function (acc, level) {
+              return acc.concat(pool[level]);
+            }, []);
+            return supabase
+              .from("question_progress")
+              .select("question_id")
+              .eq("player_id", playerId)
+              .then(function (res) {
+                if (res.error) throw res.error;
+                var correctSet = new Set((res.data || []).map(function (r) { return r.question_id; }));
+                renderAnalysis(name, allQuestions, correctSet);
+              });
+          });
+        })
+        .catch(function (err) {
+          showError("分析に失敗しました: " + err.message);
+          showScreen("start");
+        });
+    }
+
+    function renderAnalysis(name, allQuestions, correctSet) {
+      var totalCorrect = allQuestions.filter(function (q) { return correctSet.has(q.id); }).length;
+      var totalQuestions = allQuestions.length;
+
+      if (totalCorrect === 0) {
+        el.analysisType.textContent = "🌱 " + name + "さんは、これから開拓タイプ";
+        el.analysisSub.textContent = "まだ正解データがありません。まずは1問、遊んでみましょう。";
+        el.analysisCategories.innerHTML = "";
+        el.analysisComment.textContent = "";
+        showScreen("analysis");
+        return;
+      }
+
+      var catStats = computeCategoryStats(allQuestions, correctSet);
+      var ranked = TOPIC_CATEGORIES.slice().sort(function (a, b) { return catStats[b].ratio - catStats[a].ratio || catStats[b].correct - catStats[a].correct; });
+      var strongest = ranked[0];
+      var weakest = ranked[ranked.length - 1];
+
+      var clearedAll = DIFFICULTY_LEVELS.every(function (tier) {
+        var bucket = allQuestions.filter(function (q) { return q.difficulty === tier; });
+        var correct = bucket.filter(function (q) { return correctSet.has(q.id); }).length;
+        return bucket.length > 0 && correct / bucket.length >= PASS_RATIO;
+      });
+
+      if (clearedAll) {
+        el.analysisType.textContent = "🎓 " + name + "さんは、ミュージカル博士タイプ";
+        el.analysisSub.textContent = "全段位を制覇済み。もはや弱点らしい弱点はありません。";
+      } else {
+        el.analysisType.textContent = name + "さんは、" + TYPE_LABEL[strongest];
+        el.analysisSub.textContent = TYPE_COMMENT[strongest];
+      }
+
+      el.analysisCategories.innerHTML = "";
+      ranked.forEach(function (cat) {
+        var s = catStats[cat];
+        var row = document.createElement("div");
+        row.className = "analysis-cat-row";
+        if (cat === strongest && s.correct > 0) row.classList.add("is-strong");
+        if (cat === weakest && cat !== strongest) row.classList.add("is-weak");
+
+        var label = document.createElement("div");
+        label.className = "analysis-cat-label";
+        var nameSpan = document.createElement("span");
+        nameSpan.textContent = cat;
+        var valSpan = document.createElement("span");
+        valSpan.textContent = s.correct + "/" + s.total;
+        label.appendChild(nameSpan);
+        label.appendChild(valSpan);
+
+        var bar = document.createElement("div");
+        bar.className = "analysis-cat-bar";
+        var fill = document.createElement("div");
+        fill.className = "analysis-cat-bar-fill";
+        fill.style.width = Math.min(100, s.ratio * 100) + "%";
+        bar.appendChild(fill);
+
+        row.appendChild(label);
+        row.appendChild(bar);
+        el.analysisCategories.appendChild(row);
+      });
+
+      var comment = "通算 " + totalCorrect + "/" + totalQuestions + "問正解。";
+      if (!clearedAll) {
+        comment += " 得意分野は「" + strongest + "」、苦手分野は「" + weakest + "」のようです。" + TYPE_COMMENT[strongest];
+        if (weakest !== strongest && catStats[weakest].correct < catStats[weakest].total) {
+          comment += "「" + weakest + "」の問題も未正解優先モードで狙ってみると、バランスよく伸ばせます。";
+        }
+      }
+      el.analysisComment.textContent = comment;
+
+      showScreen("analysis");
+    }
+
+    // ------------------------------------------------------------
+    // 初期化
+    // ------------------------------------------------------------
+    showScreen("start");
+  })();
+  </script>
+</body>
+</html>
