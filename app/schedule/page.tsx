@@ -24,8 +24,16 @@ export default async function SchedulePage() {
       fetchTicketReleases(),
     ]);
   } catch (err) {
-    loadError =
-      err instanceof Error ? err.message : "データの取得に失敗しました。";
+    // Supabase のエラーは Error インスタンスではなく素のオブジェクトで
+    // 投げられることがあるため、message プロパティを直接拾う。
+    if (err instanceof Error) {
+      loadError = err.message;
+    } else if (err && typeof err === "object" && "message" in err) {
+      const code = "code" in err ? ` (code: ${String(err.code)})` : "";
+      loadError = `${String((err as { message: unknown }).message)}${code}`;
+    } else {
+      loadError = `不明なエラー: ${JSON.stringify(err)}`;
+    }
   }
 
   return (
