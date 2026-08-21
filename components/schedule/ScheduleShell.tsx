@@ -9,6 +9,7 @@ import type {
   TicketReleaseWithRelations,
 } from "@/lib/supabase/types";
 import { regionGroupKeyForTheater, type RegionGroupKey } from "@/lib/region-groups";
+import { scheduleStatus, todayISO } from "@/lib/date-utils";
 import FilterBar from "./FilterBar";
 import CardGridView from "./CardGridView";
 import TimelineView from "./TimelineView";
@@ -54,6 +55,10 @@ export default function ScheduleShell({
   const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [selectedRegionGroups, setSelectedRegionGroups] = useState<RegionGroupKey[]>([]);
   const [selectedWorkIds, setSelectedWorkIds] = useState<string[]>([]);
+  // 過去（終了済み）の公演も表示するかどうか。デフォルトはオフ＝現在上演中と
+  // これからの公演のみ表示し、過去の記録は見たいときだけ呼び出す形にする。
+  const [includePast, setIncludePast] = useState(false);
+  const today = todayISO();
 
   const filteredSchedules = useMemo(() => {
     return schedules.filter((s) => {
@@ -64,9 +69,11 @@ export default function ScheduleShell({
         );
       const workOk =
         selectedWorkIds.length === 0 || selectedWorkIds.includes(s.work_id);
-      return regionOk && workOk;
+      const pastOk =
+        includePast || scheduleStatus(s.start_date, s.end_date, today) !== "ended";
+      return regionOk && workOk && pastOk;
     });
-  }, [schedules, selectedRegionGroups, selectedWorkIds]);
+  }, [schedules, selectedRegionGroups, selectedWorkIds, includePast, today]);
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -96,6 +103,8 @@ export default function ScheduleShell({
             onChangeRegionGroups={setSelectedRegionGroups}
             selectedWorkIds={selectedWorkIds}
             onChangeWorkIds={setSelectedWorkIds}
+            includePast={includePast}
+            onChangeIncludePast={setIncludePast}
           />
 
           <div className="flex flex-wrap items-center justify-between gap-3">

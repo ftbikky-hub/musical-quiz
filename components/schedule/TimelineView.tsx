@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Work, ScheduleWithRelations } from "@/lib/supabase/types";
 import { readableTextColor, todayISO } from "@/lib/date-utils";
 
@@ -203,6 +203,12 @@ export default function TimelineView({
   const today = useMemo(() => toDate(todayISO()), []);
   const [activeBarId, setActiveBarId] = useState<string | null>(null);
 
+  // 横スクロールする表全体のコンテナと、「現在」を示す縦線（ヘッダー側）への参照。
+  // 過去データを含めて表示範囲が広がっても、初期表示は常に「現在」付近が
+  // 見える位置までスクロールしておくために使う。
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const todayMarkerRef = useRef<HTMLDivElement>(null);
+
   // タップでツールチップを開いている間、バー以外（テーブルの余白や画面の他の場所）を
   // タップしたら閉じる。バー自身のクリックは data-timeline-bar でマークして除外する。
   useEffect(() => {
@@ -245,6 +251,22 @@ export default function TimelineView({
     }
     return { rangeStart, rangeEnd, months };
   }, [schedules, today]);
+
+  // 過去データを含めると表示期間の左端が数年前まで伸びることがあるため、
+  // 初期スクロール位置は常に「現在」付近になるようにする（そこからさらに
+  // 左へスクロールすれば過去に遡れる）。表示期間（months）が変わるたびに
+  // 現在位置へスクロールし直す。
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const marker = todayMarkerRef.current;
+    if (!container || !marker) return;
+    const containerRect = container.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    const BUFFER_PX = 80; // 現在の少し前から見えるように余白を持たせる
+    const targetScrollLeft =
+      markerRect.left - containerRect.left + container.scrollLeft - BUFFER_PX;
+    container.scrollLeft = Math.max(0, targetScrollLeft);
+  }, [months]);
 
   const totalDays = Math.max(1, daysBetween(rangeStart, rangeEnd));
 
@@ -386,6 +408,7 @@ export default function TimelineView({
       </div>
 
       <div
+        ref={scrollContainerRef}
         className="relative overflow-auto rounded-xl border border-neutral-200 bg-white"
         style={{ maxHeight: "70vh" }}
       >
@@ -404,6 +427,13 @@ export default function TimelineView({
                   {m.getFullYear()}/{m.getMonth() + 1}
                 </div>
               ))}
+              {todayOffsetPct !== null && (
+                <div
+                  ref={todayMarkerRef}
+                  className="pointer-events-none absolute top-0 bottom-0 w-px bg-red-400"
+                  style={{ left: `${todayOffsetPct}%` }}
+                />
+              )}
             </div>
           </div>
 

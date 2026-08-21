@@ -48,12 +48,16 @@ export default function FilterBar({
   onChangeRegionGroups,
   selectedWorkIds,
   onChangeWorkIds,
+  includePast,
+  onChangeIncludePast,
 }: {
   works: Work[];
   selectedRegionGroups: RegionGroupKey[];
   onChangeRegionGroups: (v: RegionGroupKey[]) => void;
   selectedWorkIds: string[];
   onChangeWorkIds: (v: string[]) => void;
+  includePast: boolean;
+  onChangeIncludePast: (v: boolean) => void;
 }) {
   const hasFilter =
     selectedRegionGroups.length > 0 || selectedWorkIds.length > 0;
@@ -76,21 +80,39 @@ export default function FilterBar({
 
   return (
     <div className="relative z-10 flex flex-col gap-2.5">
-      <button
-        type="button"
-        onClick={() => {
-          onChangeRegionGroups([]);
-          onChangeWorkIds([]);
-        }}
-        disabled={!hasFilter}
-        className={`flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-          hasFilter
-            ? "border-neutral-900 bg-white text-neutral-900 hover:bg-neutral-900 hover:text-white"
-            : "cursor-default border-neutral-200 bg-neutral-100 text-neutral-300"
-        }`}
-      >
-        ↺ リセット（すべて表示）
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            onChangeRegionGroups([]);
+            onChangeWorkIds([]);
+          }}
+          disabled={!hasFilter}
+          className={`flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+            hasFilter
+              ? "border-neutral-900 bg-white text-neutral-900 hover:bg-neutral-900 hover:text-white"
+              : "cursor-default border-neutral-200 bg-neutral-100 text-neutral-300"
+          }`}
+        >
+          ↺ リセット（すべて表示）
+        </button>
+
+        {/* 過去の公演（終了済み）を表示するかどうかのトグル。デフォルトはオフ
+            （現在上演中・これからの公演のみ表示）。 */}
+        <label className="flex w-fit shrink-0 cursor-pointer items-center gap-2 text-xs font-bold text-neutral-500">
+          <span className="relative inline-flex h-5 w-9 shrink-0 items-center">
+            <input
+              type="checkbox"
+              checked={includePast}
+              onChange={(e) => onChangeIncludePast(e.target.checked)}
+              className="peer sr-only"
+            />
+            <span className="absolute inset-0 rounded-full bg-neutral-200 transition peer-checked:bg-neutral-900" />
+            <span className="absolute left-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-4" />
+          </span>
+          過去の公演も含める
+        </label>
+      </div>
 
       <div className="flex flex-col gap-1">
         <span className="text-[11px] font-bold text-neutral-400">地域</span>

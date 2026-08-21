@@ -169,10 +169,15 @@ function buildCards(schedules: ScheduleWithRelations[]): CardData[] {
 
 function DedicatedCard({ schedule: s }: { schedule: ScheduleWithRelations }) {
   const status = scheduleStatus(s.start_date, s.end_date);
+  const isEnded = status === "ended";
   const textColor = readableTextColor(s.work.color_code);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+    <div
+      className={`overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm ${
+        isEnded ? "opacity-60" : ""
+      }`}
+    >
       {/* 演目カラー帯：色だけで演目を識別できるようにする */}
       <div
         className="flex items-center justify-between px-4 py-2.5"
@@ -214,10 +219,15 @@ function DedicatedCard({ schedule: s }: { schedule: ScheduleWithRelations }) {
 
 function TourCard({ card }: { card: TourCardData }) {
   const status = scheduleStatus(card.earliestStart, card.latestEdge);
+  const isEnded = status === "ended";
   const textColor = readableTextColor(card.work.color_code);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+    <div
+      className={`overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm ${
+        isEnded ? "opacity-60" : ""
+      }`}
+    >
       {/* 演目カラー帯：色だけで演目を識別できるようにする */}
       <div
         className="flex items-center justify-between px-4 py-2.5"
