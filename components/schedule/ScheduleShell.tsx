@@ -7,6 +7,7 @@ import type {
   ScheduleWithRelations,
   TicketReleaseWithRelations,
 } from "@/lib/supabase/types";
+import { regionGroupKeyForTheater, type RegionGroupKey } from "@/lib/region-groups";
 import FilterBar from "./FilterBar";
 import CardGridView from "./CardGridView";
 import TimelineView from "./TimelineView";
@@ -40,24 +41,23 @@ export default function ScheduleShell({
 }) {
   const [topTab, setTopTab] = useState<TopTab>("search");
   const [viewMode, setViewMode] = useState<ViewMode>("card");
-  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [selectedRegionGroups, setSelectedRegionGroups] = useState
+    RegionGroupKey[]
+  >([]);
   const [selectedWorkIds, setSelectedWorkIds] = useState<string[]>([]);
-
-  const regions = useMemo(
-    () => Array.from(new Set(theaters.map((t) => t.region))).sort(),
-    [theaters]
-  );
 
   const filteredSchedules = useMemo(() => {
     return schedules.filter((s) => {
       const regionOk =
-        selectedRegions.length === 0 ||
-        selectedRegions.includes(s.theater.region);
+        selectedRegionGroups.length === 0 ||
+        selectedRegionGroups.includes(
+          regionGroupKeyForTheater(s.theater) as RegionGroupKey
+        );
       const workOk =
         selectedWorkIds.length === 0 || selectedWorkIds.includes(s.work_id);
       return regionOk && workOk;
     });
-  }, [schedules, selectedRegions, selectedWorkIds]);
+  }, [schedules, selectedRegionGroups, selectedWorkIds]);
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -81,15 +81,18 @@ export default function ScheduleShell({
 
       {topTab === "search" ? (
         <div className="flex flex-col gap-4">
+          <FilterBar
+            works={works}
+            selectedRegionGroups={selectedRegionGroups}
+            onChangeRegionGroups={setSelectedRegionGroups}
+            selectedWorkIds={selectedWorkIds}
+            onChangeWorkIds={setSelectedWorkIds}
+          />
+
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <FilterBar
-              works={works}
-              regions={regions}
-              selectedRegions={selectedRegions}
-              onChangeRegions={setSelectedRegions}
-              selectedWorkIds={selectedWorkIds}
-              onChangeWorkIds={setSelectedWorkIds}
-            />
+            <p className="text-xs text-neutral-400">
+              {filteredSchedules.length} 件表示中（全 {schedules.length} 件）
+            </p>
 
             <div className="flex gap-1 rounded-lg border border-neutral-200 bg-white p-1">
               {VIEW_MODES.map((v) => (
@@ -108,10 +111,6 @@ export default function ScheduleShell({
               ))}
             </div>
           </div>
-
-          <p className="text-xs text-neutral-400">
-            {filteredSchedules.length} 件表示中（全 {schedules.length} 件）
-          </p>
 
           {viewMode === "card" && (
             <CardGridView schedules={filteredSchedules} />
