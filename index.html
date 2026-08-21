@@ -20,7 +20,15 @@
   body {
     margin: 0;
     min-height: 100vh;
-    background: radial-gradient(circle at top, #2a1a38 0%, #170c20 70%);
+    background-color: #0a0610;
+    background-image:
+      radial-gradient(ellipse 640px 380px at 50% -8%, rgba(217, 164, 65, 0.22), transparent 65%),
+      radial-gradient(ellipse 480px 480px at 8% 18%, rgba(122, 46, 46, 0.13), transparent 62%),
+      radial-gradient(ellipse 480px 480px at 92% 12%, rgba(45, 60, 110, 0.13), transparent 62%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 96px),
+      linear-gradient(180deg, #1a1024 0%, #100a18 45%, #08050c 100%);
+    background-attachment: fixed;
+    background-size: cover;
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
     display: flex;
@@ -229,27 +237,37 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 8px;
     padding: 10px 12px;
     border: 1px solid var(--panel-border);
     border-radius: 10px;
     text-align: left;
   }
-  .existing-player-name { font-weight: 700; font-size: 0.92rem; }
+  .existing-player-name { font-weight: 700; font-size: 0.92rem; word-break: break-word; }
   .existing-player-badge { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
-  .existing-player-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .existing-player-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
   .existing-player-actions button {
     background: transparent;
     border: 1px solid var(--panel-border);
     color: var(--text-dim);
     border-radius: 8px;
-    padding: 7px 10px;
-    font-size: 0.78rem;
+    padding: 6px 9px;
+    font-size: 0.75rem;
     cursor: pointer;
     white-space: nowrap;
   }
   .existing-player-actions button:hover { border-color: var(--accent-dim); color: var(--text); }
   .existing-player-actions .btn-row-start { color: var(--accent); border-color: var(--accent-dim); }
+  .existing-player-actions .btn-row-delete { color: var(--incorrect); border-color: rgba(217,83,79,0.4); }
+  .existing-player-actions .btn-row-delete:hover { border-color: var(--incorrect); color: #ffb4b1; }
   .existing-players-empty { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 10px 0; }
 
   #screen-analysis .card { text-align: left; }
@@ -280,11 +298,16 @@
   .analysis-comment { font-size: 0.85rem; color: var(--text-dim); margin: 18px 0 0; line-height: 1.7; }
 
   .card {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
+    background: rgba(42, 26, 56, 0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(217, 164, 65, 0.16);
     border-radius: 16px;
     padding: 28px 22px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    box-shadow: 0 10px 34px rgba(0,0,0,0.5);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .card { background: var(--panel); }
   }
   .btn {
     display: inline-flex;
@@ -897,6 +920,17 @@
         });
     }
 
+    // プレイヤー削除（登録済み一覧から）。正解記録・解答ログも連動して消える。
+    function deletePlayer(name) {
+      return supabase
+        .from("players")
+        .delete()
+        .eq("display_name", name)
+        .then(function (res) {
+          if (res.error) throw res.error;
+        });
+    }
+
     function formatBadge(row) {
       if (row.cleared_top) {
         return "🎓 博士（" + row.total_correct + "/" + row.total_questions + "）";
@@ -967,8 +1001,29 @@
             analysisBtn.addEventListener("click", function () {
               showAnalysis(row.display_name);
             });
+            var deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "btn-row-delete";
+            deleteBtn.textContent = "🗑削除";
+            deleteBtn.addEventListener("click", function () {
+              var ok = window.confirm(
+                row.display_name + " を削除しますか？\n" +
+                "この操作は取り消せません。正解記録・解答履歴もすべて消えます。"
+              );
+              if (!ok) return;
+              deleteBtn.disabled = true;
+              deletePlayer(row.display_name)
+                .then(function () {
+                  loadExistingPlayers();
+                })
+                .catch(function (err) {
+                  deleteBtn.disabled = false;
+                  showError("削除に失敗しました: " + err.message);
+                });
+            });
             actions.appendChild(startBtn);
             actions.appendChild(analysisBtn);
+            actions.appendChild(deleteBtn);
 
             wrap.appendChild(info);
             wrap.appendChild(actions);
