@@ -24,6 +24,21 @@ function fmtRange(start: string, end: string | null): string {
   return `${start} 〜 ${end ?? "未定"}`;
 }
 
+// end_date（千秋楽）が未定（NULL）の公演は、開幕日から1年間続くものとして
+// 便宜上の終了日を補って扱う。データから除外せず、必ずバーを描画するための仕組み。
+const NULL_END_FALLBACK_MONTHS = 12;
+
+// タイムラインの表示期間（X軸）は、データ上の一番遅い日付からさらにこの月数分
+// 先までスクロールできるように余白を持たせる。
+const TRAILING_BUFFER_MONTHS = 3;
+
+// end_date が NULL の場合は「開幕日から1年後」を仮の終了日として返す。
+function resolveEndDate(schedule: ScheduleWithRelations): Date {
+  return schedule.end_date
+    ? toDate(schedule.end_date)
+    : addMonths(toDate(schedule.start_date), NULL_END_FALLBACK_MONTHS);
+}
+
 // 「北から南」の並び順判定用。固定劇場の region はエリア名（東京・舞浜・横浜、名古屋 など）、
 // 全国ツアーの region は都道府県名で入っているため、両方をこの並びに含めている。
 const NORTH_TO_SOUTH_ORDER = [
@@ -123,10 +138,7 @@ function Bar({
   onClose: () => void;
 }) {
   const durationDays =
-    daysBetween(
-      toDate(schedule.start_date),
-      toDate(schedule.end_date ?? schedule.start_date)
-    ) + 1;
+    daysBetween(toDate(schedule.start_date), resolveEndDate(schedule)) + 1;
   const isShort = durationDays <= SHORT_STAY_MAX_DAYS;
   const textColor = readableTextColor(schedule.work.color_code);
 
@@ -207,20 +219,23 @@ export default function TimelineView({
 
   const { rangeStart, rangeEnd, months } = useMemo(() => {
     const starts = schedules.map((s) => toDate(s.start_date));
-    const ends = schedules.map((s) =>
-      s.end_date ? toDate(s.end_date) : addMonths(toDate(s.start_date), 6)
-    );
+    // end_date が NULL の公演も resolveEndDate() で仮の終了日（開幕+1年）を
+    // 補って、必ず範囲計算の対象に含める（除外しない）。
+    const ends = schedules.map((s) => resolveEndDate(s));
+
     const minStart = starts.length
-      ? new Date(Math.min(...starts.map((d) => d.getTime())))
+      ? starts.reduce((min, d) => (d < min ? d : min))
       : today;
     const maxEnd = ends.length
-      ? new Date(Math.max(...ends.map((d) => d.getTime())))
-      : addMonths(today, 6);
+      ? ends.reduce((max, d) => (d > max ? d : max))
+      : addMonths(today, NULL_END_FALLBACK_MONTHS);
 
-    const rangeStart = startOfMonth(
-      minStart < today ? minStart : startOfMonth(today)
+    const rangeStart = startOfMonth(minStart < today ? minStart : today);
+    // 一番遅い日付から、さらに数ヶ月分の余白（TRAILING_BUFFER_MONTHS）を足して、
+    // 直近のデータぎりぎりで途切れないようにする。
+    const rangeEnd = startOfMonth(
+      addMonths(maxEnd, TRAILING_BUFFER_MONTHS + 1)
     );
-    const rangeEnd = startOfMonth(addMonths(maxEnd, 1));
 
     const months: Date[] = [];
     let cursor = rangeStart;
@@ -320,7 +335,7 @@ export default function TimelineView({
         )}
         {items.map((s) => {
           const start = toDate(s.start_date);
-          const end = s.end_date ? toDate(s.end_date) : addMonths(start, 6);
+          const end = resolveEndDate(s);
           const left = Math.max(
             0,
             (daysBetween(rangeStart, start) / totalDays) * 100
