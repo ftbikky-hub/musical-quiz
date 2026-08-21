@@ -763,6 +763,8 @@
       // 10問ごとの一区切り表示用。合否判定ではなく、単に節目で結果を見せるためのカウンター。
       segmentAnswered: 0,
       segmentCorrect: 0,
+      // 同じ10問セットの中で同じ問題が重ならないようにするための、出題済みID一覧。
+      segmentAskedIds: [],
     };
 
     var questionPoolPromise = null; // 200問は初回だけ取得してキャッシュする
@@ -1110,6 +1112,7 @@
       state.currentMode = state.selectedMode;
       state.segmentAnswered = 0;
       state.segmentCorrect = 0;
+      state.segmentAskedIds = [];
       showScreen("loading");
 
       (playerName ? lookupPlayerId(playerName) : Promise.resolve(null))
@@ -1192,15 +1195,26 @@
         ? pickWeightedUncorrectedPool(bucket)
         : bucket.slice();
 
-      if (state.lastQuestionId && candidates.length > 1) {
-        candidates = candidates.filter(function (q) { return q.id !== state.lastQuestionId; });
-      }
       if (candidates.length === 0) {
         state.currentQuestion = null;
         return;
       }
-      state.currentQuestion = candidates[Math.floor(Math.random() * candidates.length)];
+
+      // 同じ10問セットの中では同じ問題が重ならないようにする。
+      // ただし候補がもともと少なく全滅する場合は、セット内重複なしの制約を
+      // いったん外して（直前の1問だけは避けつつ）出題できるようにする。
+      var withoutSegmentRepeats = candidates.filter(function (q) {
+        return state.segmentAskedIds.indexOf(q.id) === -1;
+      });
+      var pool = withoutSegmentRepeats.length > 0 ? withoutSegmentRepeats : candidates;
+
+      if (state.lastQuestionId && pool.length > 1) {
+        pool = pool.filter(function (q) { return q.id !== state.lastQuestionId; });
+      }
+
+      state.currentQuestion = pool[Math.floor(Math.random() * pool.length)];
       state.lastQuestionId = state.currentQuestion.id;
+      state.segmentAskedIds.push(state.currentQuestion.id);
     }
 
     function updateProgressDisplay() {
@@ -1315,10 +1329,12 @@
         state.pendingMilestone = { type: "tier", tier: state.currentTier, exhausted: poolExhausted, stats: stats };
         state.segmentAnswered = 0;
         state.segmentCorrect = 0;
+        state.segmentAskedIds = [];
       } else if (checkpointReached) {
         state.pendingMilestone = { type: "checkpoint", correct: state.segmentCorrect, total: state.segmentAnswered };
         state.segmentAnswered = 0;
         state.segmentCorrect = 0;
+        state.segmentAskedIds = [];
       } else {
         state.pendingMilestone = null;
       }
