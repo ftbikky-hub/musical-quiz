@@ -132,14 +132,16 @@
     letter-spacing: 0.04em;
   }
 
-  .difficulty-select {
+  .difficulty-select,
+  .mode-select {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
   }
-  .difficulty-pill {
+  .difficulty-pill,
+  .mode-pill {
     background: transparent;
     border: 1px solid var(--panel-border);
     color: var(--text-dim);
@@ -149,26 +151,45 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .difficulty-pill:hover { border-color: var(--accent-dim); color: var(--text); }
-  .difficulty-pill.selected {
+  .difficulty-pill:hover,
+  .mode-pill:hover { border-color: var(--accent-dim); color: var(--text); }
+  .difficulty-pill.selected,
+  .mode-pill.selected {
     color: #241329;
     background: var(--accent);
     border-color: var(--accent);
   }
-
-  #screen-tier-clear .card { text-align: center; }
-  .tier-clear-emoji { font-size: 2.4rem; margin-bottom: 6px; }
-  .result-badge {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 6px 16px;
-    border-radius: 999px;
-    background: rgba(217, 164, 65, 0.15);
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-weight: 700;
-    font-size: 0.95rem;
+  .select-label {
+    display: block;
+    text-align: left;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
   }
+
+  .quiz-progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .quiz-progress-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: #1f1329;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .quiz-progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+
+  #screen-milestone .card { text-align: center; }
+  .milestone-emoji { font-size: 2.4rem; margin-bottom: 6px; }
 
   .card {
     background: var(--panel);
@@ -371,8 +392,9 @@
       </div>
       <div class="card">
         <h2>クイズを始めよう</h2>
-        <p class="muted">選んだ段位から挑戦スタート。5問中4問正解で次の段位に進めます。すべて突破すると「ミュージカル博士」の称号がもらえます！</p>
+        <p class="muted">お名前は入力するとそのまま「あなたの記録」になります。何度でも遊びに来て、正解を積み上げていけます。各段位は8割正解でクリアです。</p>
 
+        <label class="select-label muted">挑戦する段位</label>
         <div class="difficulty-select" id="difficulty-select">
           <button type="button" class="difficulty-pill" data-difficulty="初級">初級</button>
           <button type="button" class="difficulty-pill" data-difficulty="中級">中級</button>
@@ -380,8 +402,14 @@
           <button type="button" class="difficulty-pill" data-difficulty="超級">超級</button>
         </div>
 
+        <label class="select-label muted">出題モード</label>
+        <div class="mode-select" id="mode-select">
+          <button type="button" class="mode-pill" data-mode="uncorrected">未正解優先</button>
+          <button type="button" class="mode-pill" data-mode="random">ランダム（復習）</button>
+        </div>
+
         <label for="input-player-name" class="muted" style="display:block;text-align:left;margin-bottom:6px;font-size:0.85rem;">
-          お名前（入力するとランキングに載ります。空欄ならゲスト参加）
+          お名前（入力すると記録され、続きから遊べます。空欄ならゲスト参加＝記録なし）
         </label>
         <input
           id="input-player-name"
@@ -391,7 +419,7 @@
           style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:#1f1329;color:var(--text);font-size:0.98rem;margin-bottom:14px;"
         />
 
-        <button id="btn-start-named" class="btn btn-primary" disabled>この名前でプレイ</button>
+        <button id="btn-start-named" class="btn btn-primary" disabled>この名前で始める・続ける</button>
         <div class="spacer"></div>
         <button id="btn-start-guest" class="btn btn-secondary">ゲストとして始める</button>
         <div class="spacer"></div>
@@ -401,7 +429,11 @@
 
     <div id="screen-quiz" class="hidden">
       <div class="card">
-        <div class="progress" id="quiz-progress">問題 1 / 5</div>
+        <div class="quiz-progress-row">
+          <span id="quiz-progress">0/0 正解</span>
+          <span id="quiz-mode-label"></span>
+        </div>
+        <div class="quiz-progress-bar"><div class="quiz-progress-bar-fill" id="quiz-progress-bar-fill" style="width:0%"></div></div>
         <div class="musical-tag" id="quiz-musical"></div>
         <p class="question-text" id="quiz-question"></p>
         <div class="choices" id="quiz-choices"></div>
@@ -409,31 +441,28 @@
         <div class="explanation hidden" id="quiz-explanation"></div>
         <div class="spacer"></div>
         <button id="btn-next" class="btn btn-primary hidden">次へ</button>
+        <div class="spacer"></div>
+        <button id="btn-quiz-stop" class="btn btn-secondary">一旦やめる</button>
       </div>
     </div>
 
-    <div id="screen-tier-clear" class="hidden">
+    <div id="screen-milestone" class="hidden">
       <div class="card">
-        <div class="tier-clear-emoji">🎉</div>
-        <h2 id="tier-clear-title">突破！</h2>
-        <p class="muted" id="tier-clear-detail"></p>
-        <button id="btn-next-tier" class="btn btn-primary">次の段位へ挑戦</button>
+        <div class="milestone-emoji">🎉</div>
+        <h2 id="milestone-title">突破！</h2>
+        <p class="muted" id="milestone-detail"></p>
+        <button id="btn-milestone-continue" class="btn btn-primary">このまま続ける</button>
+        <div class="spacer"></div>
+        <button id="btn-milestone-back" class="btn btn-secondary">スタート画面に戻る</button>
       </div>
     </div>
 
     <div id="screen-result" class="hidden">
       <div class="card">
-        <div class="result-score">
-          <div class="muted">通算正解数</div>
-          <div class="big" id="result-score-value">0</div>
-          <div class="muted" id="result-detail"></div>
-          <div class="result-badge" id="result-badge"></div>
-        </div>
-        <button id="btn-again" class="btn btn-primary">もう一度遊ぶ</button>
-        <div class="leaderboard">
-          <h3>🏆 ランキング（トップ5）</h3>
-          <ol id="leaderboard-list"></ol>
-        </div>
+        <h3 style="margin-top:0;">🏆 ランキング（トップ5）</h3>
+        <ol id="leaderboard-list"></ol>
+        <div class="spacer"></div>
+        <button id="btn-back-from-leaderboard" class="btn btn-primary">スタート画面に戻る</button>
       </div>
     </div>
 
@@ -450,10 +479,10 @@
     // ------------------------------------------------------------
     var SUPABASE_URL = "https://vgmbcbseikcjkjxbyrjx.supabase.co";
     var SUPABASE_ANON_KEY = "sb_publishable_oNXZ4n-XITyKLgLRtKgVVw_UPokBcTL";
-    var QUESTIONS_PER_ROUND = 5;
-    var PASS_MIN_CORRECT = 4;
+    var PASS_RATIO = 0.8;
     var DIFFICULTY_LEVELS = ["初級", "中級", "上級", "超級"];
     var TIER_BADGE = { "初級": "🔰", "中級": "⭐", "上級": "🌟", "超級": "👑" };
+    var MODE_LABEL = { uncorrected: "未正解優先", random: "ランダム" };
 
     var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -535,58 +564,59 @@
       loading: document.getElementById("screen-loading"),
       start: document.getElementById("screen-start"),
       quiz: document.getElementById("screen-quiz"),
-      tierClear: document.getElementById("screen-tier-clear"),
+      milestone: document.getElementById("screen-milestone"),
       result: document.getElementById("screen-result"),
       difficultySelect: document.getElementById("difficulty-select"),
+      modeSelect: document.getElementById("mode-select"),
       inputPlayerName: document.getElementById("input-player-name"),
       btnStartNamed: document.getElementById("btn-start-named"),
       btnStartGuest: document.getElementById("btn-start-guest"),
       btnViewLeaderboard: document.getElementById("btn-view-leaderboard"),
-      btnAgain: document.getElementById("btn-again"),
+      btnBackFromLeaderboard: document.getElementById("btn-back-from-leaderboard"),
       btnNext: document.getElementById("btn-next"),
-      btnNextTier: document.getElementById("btn-next-tier"),
-      tierClearTitle: document.getElementById("tier-clear-title"),
-      tierClearDetail: document.getElementById("tier-clear-detail"),
+      btnQuizStop: document.getElementById("btn-quiz-stop"),
+      btnMilestoneContinue: document.getElementById("btn-milestone-continue"),
+      btnMilestoneBack: document.getElementById("btn-milestone-back"),
+      milestoneTitle: document.getElementById("milestone-title"),
+      milestoneDetail: document.getElementById("milestone-detail"),
       quizProgress: document.getElementById("quiz-progress"),
+      quizModeLabel: document.getElementById("quiz-mode-label"),
+      quizProgressBarFill: document.getElementById("quiz-progress-bar-fill"),
       quizMusical: document.getElementById("quiz-musical"),
       quizQuestion: document.getElementById("quiz-question"),
       quizChoices: document.getElementById("quiz-choices"),
       quizFeedback: document.getElementById("quiz-feedback"),
       quizExplanation: document.getElementById("quiz-explanation"),
-      resultScoreValue: document.getElementById("result-score-value"),
-      resultDetail: document.getElementById("result-detail"),
-      resultBadge: document.getElementById("result-badge"),
       leaderboardList: document.getElementById("leaderboard-list"),
       errorBox: document.getElementById("error-box"),
     };
 
     var state = {
+      playerId: null,
       playerName: null,
       selectedDifficulty: "初級",
-      startDifficulty: null,
+      selectedMode: "uncorrected",
+      currentTier: "初級",
+      currentMode: "uncorrected",
       pool: null,
-      currentLevelIndex: 0,
-      questions: [],
-      currentIndex: 0,
-      tierCorrectCount: 0,
-      totalCorrect: 0,
-      totalQuestions: 0,
-      reachedLevel: 0,
-      clearedTop: false,
-      sessionId: null,
-      startedAt: null,
-      pendingAnswers: [],
+      correctSet: null,
+      tierClearedFlags: {},
+      currentQuestion: null,
+      lastQuestionId: null,
       answered: false,
+      pendingMilestone: null,
     };
 
+    var questionPoolPromise = null; // 200問は初回だけ取得してキャッシュする
+
     function showScreen(name) {
-      ["loading", "start", "quiz", "tierClear", "result"].forEach(function (key) {
+      ["loading", "start", "quiz", "milestone", "result"].forEach(function (key) {
         el[key].classList.toggle("hidden", key !== name);
       });
     }
 
     // ------------------------------------------------------------
-    // 難易度選択（開始段位）
+    // 難易度・出題モード選択
     // ------------------------------------------------------------
     var difficultyButtons = el.difficultySelect.querySelectorAll(".difficulty-pill");
     function setSelectedDifficulty(value) {
@@ -601,6 +631,20 @@
       });
     });
     setSelectedDifficulty(state.selectedDifficulty);
+
+    var modeButtons = el.modeSelect.querySelectorAll(".mode-pill");
+    function setSelectedMode(value) {
+      state.selectedMode = value;
+      modeButtons.forEach(function (b) {
+        b.classList.toggle("selected", b.getAttribute("data-mode") === value);
+      });
+    }
+    modeButtons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        setSelectedMode(b.getAttribute("data-mode"));
+      });
+    });
+    setSelectedMode(state.selectedMode);
 
     function generateUUID() {
       if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -634,7 +678,70 @@
     }
 
     // ------------------------------------------------------------
-    // 開始画面（名前入力 / ゲスト）
+    // 問題データ（200問）は初回のみ取得してキャッシュ
+    // ------------------------------------------------------------
+    function getQuestionPool() {
+      if (!questionPoolPromise) {
+        questionPoolPromise = supabase
+          .from("questions")
+          .select("id, question_text, explanation, difficulty, choices(id, choice_text, is_correct, sort_order)")
+          .then(function (res) {
+            if (res.error) throw res.error;
+            if (!res.data || res.data.length === 0) {
+              throw new Error("問題データが見つかりませんでした。");
+            }
+            var pool = {};
+            DIFFICULTY_LEVELS.forEach(function (level) { pool[level] = []; });
+            res.data.forEach(function (q) {
+              q.choices = q.choices.slice().sort(function (a, b) { return a.sort_order - b.sort_order; });
+              if (pool[q.difficulty]) pool[q.difficulty].push(q);
+            });
+            return pool;
+          })
+          .catch(function (err) {
+            questionPoolPromise = null; // 失敗時は次回また取得を試みる
+            throw err;
+          });
+      }
+      return questionPoolPromise;
+    }
+
+    // ------------------------------------------------------------
+    // プレイヤー名の解決（既存名なら継続、新規なら登録。重複はDBのユニーク制約で防止）
+    // ------------------------------------------------------------
+    function resolvePlayer(name) {
+      return supabase
+        .from("players")
+        .select("id")
+        .eq("display_name", name)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          if (res.data && res.data.length > 0) {
+            return res.data[0].id;
+          }
+          var newId = generateUUID();
+          return supabase
+            .from("players")
+            .insert({ id: newId, display_name: name })
+            .then(function (insRes) {
+              if (insRes.error) {
+                // 同時に同じ新規名で登録された等のレースは再検索してフォールバック
+                return supabase
+                  .from("players")
+                  .select("id")
+                  .eq("display_name", name)
+                  .then(function (res2) {
+                    if (res2.data && res2.data.length > 0) return res2.data[0].id;
+                    throw insRes.error;
+                  });
+              }
+              return newId;
+            });
+        });
+    }
+
+    // ------------------------------------------------------------
+    // 開始画面
     // ------------------------------------------------------------
     el.inputPlayerName.addEventListener("input", function () {
       el.btnStartNamed.disabled = el.inputPlayerName.value.trim().length === 0;
@@ -657,53 +764,60 @@
       startQuiz(null);
     });
 
-    el.btnAgain.addEventListener("click", function () {
-      el.inputPlayerName.value = state.playerName || "";
-      el.btnStartNamed.disabled = !state.playerName;
-      setSelectedDifficulty(state.startDifficulty || "初級");
+    el.btnQuizStop.addEventListener("click", function () {
+      showScreen("start");
+    });
+
+    el.btnMilestoneBack.addEventListener("click", function () {
+      showScreen("start");
+    });
+
+    el.btnBackFromLeaderboard.addEventListener("click", function () {
       showScreen("start");
     });
 
     el.btnViewLeaderboard.addEventListener("click", function () {
+      showScreen("loading");
       loadLeaderboard().then(function () {
-        el.resultScoreValue.textContent = "-";
-        el.resultDetail.textContent = "";
-        el.resultBadge.textContent = "";
         showScreen("result");
       });
     });
 
     function startQuiz(playerName) {
       state.playerName = playerName;
-      state.startDifficulty = state.selectedDifficulty;
-      state.currentLevelIndex = DIFFICULTY_LEVELS.indexOf(state.selectedDifficulty);
-      if (state.currentLevelIndex < 0) state.currentLevelIndex = 0;
-      state.totalCorrect = 0;
-      state.totalQuestions = 0;
-      state.reachedLevel = 0;
-      state.clearedTop = false;
-      state.pendingAnswers = [];
-      state.sessionId = generateUUID();
-      state.startedAt = new Date().toISOString();
+      state.currentTier = state.selectedDifficulty;
+      state.currentMode = state.selectedMode;
       showScreen("loading");
 
-      supabase
-        .from("questions")
-        .select("id, question_text, explanation, difficulty, choices(id, choice_text, is_correct, sort_order)")
-        .then(function (res) {
-          if (res.error) throw res.error;
-          if (!res.data || res.data.length === 0) {
-            throw new Error("問題データが見つかりませんでした。");
-          }
-          var pool = {};
-          DIFFICULTY_LEVELS.forEach(function (level) { pool[level] = []; });
-          res.data.forEach(function (q) {
-            q.choices = q.choices.slice().sort(function (a, b) { return a.sort_order - b.sort_order; });
-            if (pool[q.difficulty]) pool[q.difficulty].push(q);
+      (playerName ? resolvePlayer(playerName) : Promise.resolve(null))
+        .then(function (playerId) {
+          state.playerId = playerId;
+          return getQuestionPool().then(function (pool) {
+            state.pool = pool;
+            if (!playerId) {
+              state.correctSet = new Set();
+              return;
+            }
+            return supabase
+              .from("question_progress")
+              .select("question_id")
+              .eq("player_id", playerId)
+              .then(function (res) {
+                if (res.error) throw res.error;
+                state.correctSet = new Set((res.data || []).map(function (r) { return r.question_id; }));
+              });
           });
-          state.pool = pool;
-
-          startTierRound();
+        })
+        .then(function () {
+          initTierClearedFlags();
+          pickNextQuestion();
+          if (!state.currentQuestion) {
+            showError("「" + state.currentTier + "」は現在のモードで出題できる問題がありません。モードを変えてみてください。");
+            showScreen("start");
+            return;
+          }
+          renderQuestion();
+          showScreen("quiz");
         })
         .catch(function (err) {
           showError("クイズの開始に失敗しました: " + err.message);
@@ -711,29 +825,56 @@
         });
     }
 
-    function startTierRound() {
-      var level = DIFFICULTY_LEVELS[state.currentLevelIndex];
-      var bucket = (state.pool && state.pool[level]) || [];
-      if (bucket.length === 0) {
-        showError("「" + level + "」の問題データが見つかりませんでした。");
-        showScreen("start");
+    function initTierClearedFlags() {
+      state.tierClearedFlags = {};
+      DIFFICULTY_LEVELS.forEach(function (tier) {
+        state.tierClearedFlags[tier] = computeTierStats(tier).ratio >= PASS_RATIO;
+      });
+    }
+
+    function computeTierStats(tier) {
+      var bucket = (state.pool && state.pool[tier]) || [];
+      var correct = bucket.filter(function (q) { return state.correctSet.has(q.id); }).length;
+      return {
+        correct: correct,
+        total: bucket.length,
+        ratio: bucket.length > 0 ? correct / bucket.length : 0,
+      };
+    }
+
+    function getCandidates(tier, mode) {
+      var bucket = (state.pool && state.pool[tier]) || [];
+      if (mode === "uncorrected") {
+        return bucket.filter(function (q) { return !state.correctSet.has(q.id); });
+      }
+      return bucket.slice();
+    }
+
+    function pickNextQuestion() {
+      var candidates = getCandidates(state.currentTier, state.currentMode);
+      if (state.lastQuestionId && candidates.length > 1) {
+        candidates = candidates.filter(function (q) { return q.id !== state.lastQuestionId; });
+      }
+      if (candidates.length === 0) {
+        state.currentQuestion = null;
         return;
       }
-      state.questions = shuffle(bucket).slice(0, Math.min(QUESTIONS_PER_ROUND, bucket.length));
-      state.currentIndex = 0;
-      state.tierCorrectCount = 0;
+      state.currentQuestion = candidates[Math.floor(Math.random() * candidates.length)];
+      state.lastQuestionId = state.currentQuestion.id;
+    }
 
-      renderQuestion();
-      showScreen("quiz");
+    function updateProgressDisplay() {
+      var stats = computeTierStats(state.currentTier);
+      el.quizProgress.textContent = TIER_BADGE[state.currentTier] + " " + state.currentTier + "  " + stats.correct + "/" + stats.total + "問正解";
+      el.quizModeLabel.textContent = MODE_LABEL[state.currentMode];
+      el.quizProgressBarFill.style.width = Math.min(100, stats.ratio * 100) + "%";
     }
 
     function renderQuestion() {
       state.answered = false;
-      var level = DIFFICULTY_LEVELS[state.currentLevelIndex];
-      var q = state.questions[state.currentIndex];
-      el.quizProgress.textContent =
-        level + " - 問題 " + (state.currentIndex + 1) + " / " + state.questions.length;
-      el.quizMusical.textContent = TIER_BADGE[level] + " " + level;
+      var q = state.currentQuestion;
+      updateProgressDisplay();
+      el.quizMusical.textContent = state.correctSet.has(q.id) ? "✓ 正解済みの問題（復習）" : "未正解の問題";
       el.quizQuestion.textContent = q.question_text;
       el.quizExplanation.classList.add("hidden");
       el.quizExplanation.textContent = "";
@@ -761,17 +902,13 @@
       var buttons = el.quizChoices.querySelectorAll(".choice-btn");
       buttons.forEach(function (b) { b.disabled = true; });
 
-      question.choices.forEach(function (c, idx) {
+      question.choices.forEach(function (c) {
         if (c.is_correct) {
           var match = Array.prototype.find.call(buttons, function (b) { return b.textContent === c.choice_text; });
           if (match) match.classList.add("correct");
         }
       });
       if (!choice.is_correct) btnEl.classList.add("incorrect");
-      if (choice.is_correct) {
-        state.tierCorrectCount += 1;
-        state.totalCorrect += 1;
-      }
 
       if (choice.is_correct) {
         el.quizFeedback.textContent = "◯ 正解！";
@@ -786,114 +923,106 @@
         el.quizExplanation.textContent = question.explanation;
         el.quizExplanation.classList.remove("hidden");
       }
-      el.btnNext.classList.remove("hidden");
-      el.btnNext.textContent = state.currentIndex === state.questions.length - 1 ? "結果を確認する" : "次へ";
 
-      state.pendingAnswers.push({
-        session_id: state.sessionId,
-        question_id: question.id,
-        selected_choice_id: choice.id,
-        is_correct: choice.is_correct,
-      });
+      // 正解フラグは一度立てたら消さない（既に正解済みなら何もしない）
+      var newlyCorrect = choice.is_correct && !state.correctSet.has(question.id);
+      if (newlyCorrect) {
+        state.correctSet.add(question.id);
+      }
+
+      if (state.playerId) {
+        supabase
+          .from("quiz_answer_log")
+          .insert({
+            player_id: state.playerId,
+            question_id: question.id,
+            selected_choice_id: choice.id,
+            is_correct: choice.is_correct,
+          })
+          .then(function (res) {
+            if (res.error) console.warn("解答ログの保存に失敗しました", res.error);
+          })
+          .catch(function (err) { console.warn("解答ログの保存に失敗しました", err); });
+
+        if (newlyCorrect) {
+          supabase
+            .from("question_progress")
+            .upsert(
+              { player_id: state.playerId, question_id: question.id },
+              { onConflict: "player_id,question_id", ignoreDuplicates: true }
+            )
+            .then(function (res) {
+              if (res.error) console.warn("正解フラグの保存に失敗しました", res.error);
+            })
+            .catch(function (err) { console.warn("正解フラグの保存に失敗しました", err); });
+        }
+      }
+
+      updateProgressDisplay();
+
+      var stats = computeTierStats(state.currentTier);
+      var candidatesAfter = getCandidates(state.currentTier, state.currentMode);
+      var justCleared = stats.ratio >= PASS_RATIO && !state.tierClearedFlags[state.currentTier];
+      if (stats.ratio >= PASS_RATIO) state.tierClearedFlags[state.currentTier] = true;
+      var poolExhausted = state.currentMode === "uncorrected" && candidatesAfter.length === 0;
+      state.pendingMilestone = (justCleared || poolExhausted)
+        ? { tier: state.currentTier, exhausted: poolExhausted, stats: stats }
+        : null;
+
+      el.btnNext.classList.remove("hidden");
+      el.btnNext.textContent = "次へ";
     }
 
     el.btnNext.addEventListener("click", function () {
-      if (state.currentIndex < state.questions.length - 1) {
-        state.currentIndex += 1;
-        renderQuestion();
+      if (state.pendingMilestone) {
+        showMilestone(state.pendingMilestone);
+        state.pendingMilestone = null;
+        return;
+      }
+      pickNextQuestion();
+      if (!state.currentQuestion) {
+        showMilestone({ tier: state.currentTier, exhausted: true, stats: computeTierStats(state.currentTier) });
+        return;
+      }
+      renderQuestion();
+    });
+
+    function showMilestone(m) {
+      var tier = m.tier;
+      if (m.exhausted) {
+        el.milestoneTitle.textContent = "🎓 " + tier + " 全" + m.stats.total + "問正解！";
+        el.milestoneDetail.textContent = tier + "のすべての問題に正解しました。お見事です！";
       } else {
-        evaluateTierRound();
+        el.milestoneTitle.textContent = TIER_BADGE[tier] + " " + tier + "突破！";
+        el.milestoneDetail.textContent =
+          tier + "で" + m.stats.correct + "/" + m.stats.total + "問正解（8割達成）。このまま続けても、別の段位に挑戦してもOKです。";
       }
-    });
-
-    function evaluateTierRound() {
-      state.totalQuestions += state.questions.length;
-      var level = DIFFICULTY_LEVELS[state.currentLevelIndex];
-      var passed = state.tierCorrectCount >= PASS_MIN_CORRECT;
-
-      if (!passed) {
-        finishQuiz();
-        return;
+      if (tier === "超級" && m.stats.ratio >= PASS_RATIO) {
+        el.milestoneDetail.textContent += " 🎓「ミュージカル博士」の称号を獲得しました！";
       }
 
-      state.reachedLevel = state.currentLevelIndex + 1;
+      var candidates = getCandidates(state.currentTier, state.currentMode);
+      el.btnMilestoneContinue.classList.toggle("hidden", candidates.length === 0);
 
-      if (state.currentLevelIndex >= DIFFICULTY_LEVELS.length - 1) {
-        state.clearedTop = true;
-        finishQuiz();
-        return;
-      }
-
-      var nextLevel = DIFFICULTY_LEVELS[state.currentLevelIndex + 1];
-      el.tierClearTitle.textContent = TIER_BADGE[level] + " " + level + "突破！";
-      el.tierClearDetail.textContent =
-        level + "で" + state.tierCorrectCount + "/" + state.questions.length + "問正解。次は「" + nextLevel + "」に挑戦できます。";
-      showScreen("tierClear");
+      showScreen("milestone");
     }
 
-    el.btnNextTier.addEventListener("click", function () {
-      state.currentLevelIndex += 1;
-      startTierRound();
-    });
-
-    function finishQuiz() {
-      showScreen("loading");
-
-      function showResult() {
-        el.resultScoreValue.textContent = state.totalCorrect;
-        el.resultDetail.textContent =
-          state.totalCorrect + " / " + state.totalQuestions + " 問正解（通算）" +
-          (state.playerName ? "" : "（ゲスト参加のためランキング対象外です）");
-
-        if (state.clearedTop) {
-          el.resultBadge.textContent = "🎓 ミュージカル博士！全段位クリア";
-        } else if (state.reachedLevel > 0) {
-          var reachedLabel = DIFFICULTY_LEVELS[state.reachedLevel - 1];
-          el.resultBadge.textContent = TIER_BADGE[reachedLabel] + " " + reachedLabel + "突破";
-        } else {
-          el.resultBadge.textContent = DIFFICULTY_LEVELS[state.currentLevelIndex] + "で敗退…";
-        }
-
-        showScreen("result");
+    el.btnMilestoneContinue.addEventListener("click", function () {
+      pickNextQuestion();
+      if (!state.currentQuestion) {
+        showScreen("start");
+        return;
       }
-
-      supabase
-        .from("quiz_sessions")
-        .insert({
-          id: state.sessionId,
-          player_name: state.playerName,
-          start_difficulty: state.startDifficulty,
-          reached_level: state.reachedLevel,
-          reached_difficulty: state.reachedLevel > 0 ? DIFFICULTY_LEVELS[state.reachedLevel - 1] : null,
-          cleared_top: state.clearedTop,
-          total_questions: state.totalQuestions,
-          correct_count: state.totalCorrect,
-          score: state.totalCorrect * 20,
-          started_at: state.startedAt,
-          finished_at: new Date().toISOString(),
-        })
-        .then(function (res) {
-          if (res.error) throw res.error;
-          if (state.pendingAnswers.length > 0) {
-            return supabase.from("quiz_answers").insert(state.pendingAnswers);
-          }
-        })
-        .then(function () {
-          return loadLeaderboard();
-        })
-        .then(showResult)
-        .catch(function (err) {
-          showError("結果の保存に失敗しました: " + err.message);
-          showResult();
-        });
-    }
+      renderQuestion();
+      showScreen("quiz");
+    });
 
     function loadLeaderboard() {
       return supabase
         .from("leaderboard")
         .select("*")
         .order("reached_level", { ascending: false })
-        .order("correct_count", { ascending: false })
+        .order("total_correct", { ascending: false })
         .limit(5)
         .then(function (res) {
           el.leaderboardList.innerHTML = "";
@@ -910,11 +1039,11 @@
             var badgeSpan = document.createElement("span");
             var label;
             if (row.cleared_top) {
-              label = "🎓 博士（" + row.correct_count + "/" + row.total_questions + "）";
+              label = "🎓 博士（" + row.total_correct + "/" + row.total_questions + "）";
             } else if (row.reached_difficulty) {
-              label = TIER_BADGE[row.reached_difficulty] + " " + row.reached_difficulty + "突破（" + row.correct_count + "/" + row.total_questions + "）";
+              label = TIER_BADGE[row.reached_difficulty] + " " + row.reached_difficulty + "突破（" + row.total_correct + "/" + row.total_questions + "）";
             } else {
-              label = "挑戦中（" + row.correct_count + "/" + row.total_questions + "）";
+              label = "挑戦中（" + row.total_correct + "/" + row.total_questions + "）";
             }
             badgeSpan.textContent = label;
             li.appendChild(nameSpan);
