@@ -1,130 +1,127 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import type { Work } from "@/lib/supabase/types";
+import { REGION_GROUPS, type RegionGroupKey } from "@/lib/region-groups";
 
-function MultiSelectPopover({
+// この3演目は全国ツアー作品なので、チップのラベルに（全国）を付けて区別する。
+const TOUR_WORK_TITLES = new Set([
+  "コーラスライン",
+  "はじまりの樹の神話",
+  "王様の耳はロバの耳",
+]);
+
+function Chip({
   label,
-  options,
+  color,
   selected,
-  onChange,
+  onClick,
 }: {
   label: string;
-  options: { value: string; label: string; color?: string }[];
-  selected: string[];
-  onChange: (values: string[]) => void;
+  color?: string;
+  selected: boolean;
+  onClick: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
-
-  function toggle(value: string) {
-    if (selected.includes(value)) {
-      onChange(selected.filter((v) => v !== value));
-    } else {
-      onChange([...selected, value]);
-    }
-  }
-
   return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
-          selected.length > 0
-            ? "border-neutral-900 bg-neutral-900 text-white"
-            : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
-        }`}
-      >
-        {label}
-        {selected.length > 0 && (
-          <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">
-            {selected.length}
-          </span>
-        )}
-        <span className="text-[10px] opacity-70">▾</span>
-      </button>
-
-      {open && (
-        <div className="absolute left-0 z-20 mt-2 max-h-72 w-56 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
-          {selected.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="mb-1 w-full rounded-md px-2 py-1 text-left text-xs text-neutral-400 hover:bg-neutral-50"
-            >
-              選択をクリア
-            </button>
-          )}
-          {options.map((opt) => (
-            <label
-              key={opt.value}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-neutral-50"
-            >
-              <input
-                type="checkbox"
-                checked={selected.includes(opt.value)}
-                onChange={() => toggle(opt.value)}
-                className="h-3.5 w-3.5"
-              />
-              {opt.color && (
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: opt.color }}
-                />
-              )}
-              <span className="truncate">{opt.label}</span>
-            </label>
-          ))}
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+        selected
+          ? "border-neutral-900 bg-neutral-900 text-white"
+          : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+      }`}
+    >
+      {color && (
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: color }}
+        />
       )}
-    </div>
+      {label}
+    </button>
   );
 }
 
 export default function FilterBar({
   works,
-  regions,
-  selectedRegions,
-  onChangeRegions,
+  selectedRegionGroups,
+  onChangeRegionGroups,
   selectedWorkIds,
   onChangeWorkIds,
 }: {
   works: Work[];
-  regions: string[];
-  selectedRegions: string[];
-  onChangeRegions: (v: string[]) => void;
+  selectedRegionGroups: RegionGroupKey[];
+  onChangeRegionGroups: (v: RegionGroupKey[]) => void;
   selectedWorkIds: string[];
   onChangeWorkIds: (v: string[]) => void;
 }) {
+  const hasFilter =
+    selectedRegionGroups.length > 0 || selectedWorkIds.length > 0;
+
+  function toggleRegionGroup(key: RegionGroupKey) {
+    onChangeRegionGroups(
+      selectedRegionGroups.includes(key)
+        ? selectedRegionGroups.filter((k) => k !== key)
+        : [...selectedRegionGroups, key]
+    );
+  }
+
+  function toggleWork(id: string) {
+    onChangeWorkIds(
+      selectedWorkIds.includes(id)
+        ? selectedWorkIds.filter((w) => w !== id)
+        : [...selectedWorkIds, id]
+    );
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <MultiSelectPopover
-        label="地域"
-        options={regions.map((r) => ({ value: r, label: r }))}
-        selected={selectedRegions}
-        onChange={onChangeRegions}
-      />
-      <MultiSelectPopover
-        label="演目"
-        options={works.map((w) => ({
-          value: w.id,
-          label: w.title,
-          color: w.color_code,
-        }))}
-        selected={selectedWorkIds}
-        onChange={onChangeWorkIds}
-      />
+    <div className="relative z-10 flex flex-col gap-2.5">
+      <button
+        type="button"
+        onClick={() => {
+          onChangeRegionGroups([]);
+          onChangeWorkIds([]);
+        }}
+        disabled={!hasFilter}
+        className={`flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+          hasFilter
+            ? "border-neutral-900 bg-white text-neutral-900 hover:bg-neutral-900 hover:text-white"
+            : "cursor-default border-neutral-200 bg-neutral-100 text-neutral-300"
+        }`}
+      >
+        ↺ リセット（すべて表示）
+      </button>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-[11px] font-bold text-neutral-400">地域</span>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {REGION_GROUPS.map((g) => (
+            <Chip
+              key={g.key}
+              label={g.label}
+              selected={selectedRegionGroups.includes(g.key)}
+              onClick={() => toggleRegionGroup(g.key)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-[11px] font-bold text-neutral-400">演目</span>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {works.map((w) => (
+            <Chip
+              key={w.id}
+              label={
+                TOUR_WORK_TITLES.has(w.title) ? `${w.title}（全国）` : w.title
+              }
+              color={w.color_code}
+              selected={selectedWorkIds.includes(w.id)}
+              onClick={() => toggleWork(w.id)}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
