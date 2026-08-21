@@ -132,6 +132,44 @@
     letter-spacing: 0.04em;
   }
 
+  .difficulty-select {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .difficulty-pill {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .difficulty-pill:hover { border-color: var(--accent-dim); color: var(--text); }
+  .difficulty-pill.selected {
+    color: #241329;
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  #screen-tier-clear .card { text-align: center; }
+  .tier-clear-emoji { font-size: 2.4rem; margin-bottom: 6px; }
+  .result-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgba(217, 164, 65, 0.15);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
   .card {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -333,7 +371,14 @@
       </div>
       <div class="card">
         <h2>クイズを始めよう</h2>
-        <p class="muted">全10問の中からランダムで5問出題されます。ミュージカルの知識を試してみましょう。</p>
+        <p class="muted">選んだ段位から挑戦スタート。5問中4問正解で次の段位に進めます。すべて突破すると「ミュージカル博士」の称号がもらえます！</p>
+
+        <div class="difficulty-select" id="difficulty-select">
+          <button type="button" class="difficulty-pill" data-difficulty="初級">初級</button>
+          <button type="button" class="difficulty-pill" data-difficulty="中級">中級</button>
+          <button type="button" class="difficulty-pill" data-difficulty="上級">上級</button>
+          <button type="button" class="difficulty-pill" data-difficulty="超級">超級</button>
+        </div>
 
         <label for="input-player-name" class="muted" style="display:block;text-align:left;margin-bottom:6px;font-size:0.85rem;">
           お名前（入力するとランキングに載ります。空欄ならゲスト参加）
@@ -367,12 +412,22 @@
       </div>
     </div>
 
+    <div id="screen-tier-clear" class="hidden">
+      <div class="card">
+        <div class="tier-clear-emoji">🎉</div>
+        <h2 id="tier-clear-title">突破！</h2>
+        <p class="muted" id="tier-clear-detail"></p>
+        <button id="btn-next-tier" class="btn btn-primary">次の段位へ挑戦</button>
+      </div>
+    </div>
+
     <div id="screen-result" class="hidden">
       <div class="card">
         <div class="result-score">
-          <div class="muted">今回のスコア</div>
+          <div class="muted">通算正解数</div>
           <div class="big" id="result-score-value">0</div>
           <div class="muted" id="result-detail"></div>
+          <div class="result-badge" id="result-badge"></div>
         </div>
         <button id="btn-again" class="btn btn-primary">もう一度遊ぶ</button>
         <div class="leaderboard">
@@ -396,6 +451,9 @@
     var SUPABASE_URL = "https://vgmbcbseikcjkjxbyrjx.supabase.co";
     var SUPABASE_ANON_KEY = "sb_publishable_oNXZ4n-XITyKLgLRtKgVVw_UPokBcTL";
     var QUESTIONS_PER_ROUND = 5;
+    var PASS_MIN_CORRECT = 4;
+    var DIFFICULTY_LEVELS = ["初級", "中級", "上級", "超級"];
+    var TIER_BADGE = { "初級": "🔰", "中級": "⭐", "上級": "🌟", "超級": "👑" };
 
     var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -477,13 +535,18 @@
       loading: document.getElementById("screen-loading"),
       start: document.getElementById("screen-start"),
       quiz: document.getElementById("screen-quiz"),
+      tierClear: document.getElementById("screen-tier-clear"),
       result: document.getElementById("screen-result"),
+      difficultySelect: document.getElementById("difficulty-select"),
       inputPlayerName: document.getElementById("input-player-name"),
       btnStartNamed: document.getElementById("btn-start-named"),
       btnStartGuest: document.getElementById("btn-start-guest"),
       btnViewLeaderboard: document.getElementById("btn-view-leaderboard"),
       btnAgain: document.getElementById("btn-again"),
       btnNext: document.getElementById("btn-next"),
+      btnNextTier: document.getElementById("btn-next-tier"),
+      tierClearTitle: document.getElementById("tier-clear-title"),
+      tierClearDetail: document.getElementById("tier-clear-detail"),
       quizProgress: document.getElementById("quiz-progress"),
       quizMusical: document.getElementById("quiz-musical"),
       quizQuestion: document.getElementById("quiz-question"),
@@ -492,15 +555,24 @@
       quizExplanation: document.getElementById("quiz-explanation"),
       resultScoreValue: document.getElementById("result-score-value"),
       resultDetail: document.getElementById("result-detail"),
+      resultBadge: document.getElementById("result-badge"),
       leaderboardList: document.getElementById("leaderboard-list"),
       errorBox: document.getElementById("error-box"),
     };
 
     var state = {
       playerName: null,
+      selectedDifficulty: "初級",
+      startDifficulty: null,
+      pool: null,
+      currentLevelIndex: 0,
       questions: [],
       currentIndex: 0,
-      correctCount: 0,
+      tierCorrectCount: 0,
+      totalCorrect: 0,
+      totalQuestions: 0,
+      reachedLevel: 0,
+      clearedTop: false,
       sessionId: null,
       startedAt: null,
       pendingAnswers: [],
@@ -508,10 +580,27 @@
     };
 
     function showScreen(name) {
-      ["loading", "start", "quiz", "result"].forEach(function (key) {
+      ["loading", "start", "quiz", "tierClear", "result"].forEach(function (key) {
         el[key].classList.toggle("hidden", key !== name);
       });
     }
+
+    // ------------------------------------------------------------
+    // 難易度選択（開始段位）
+    // ------------------------------------------------------------
+    var difficultyButtons = el.difficultySelect.querySelectorAll(".difficulty-pill");
+    function setSelectedDifficulty(value) {
+      state.selectedDifficulty = value;
+      difficultyButtons.forEach(function (b) {
+        b.classList.toggle("selected", b.getAttribute("data-difficulty") === value);
+      });
+    }
+    difficultyButtons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        setSelectedDifficulty(b.getAttribute("data-difficulty"));
+      });
+    });
+    setSelectedDifficulty(state.selectedDifficulty);
 
     function generateUUID() {
       if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -571,6 +660,7 @@
     el.btnAgain.addEventListener("click", function () {
       el.inputPlayerName.value = state.playerName || "";
       el.btnStartNamed.disabled = !state.playerName;
+      setSelectedDifficulty(state.startDifficulty || "初級");
       showScreen("start");
     });
 
@@ -578,35 +668,42 @@
       loadLeaderboard().then(function () {
         el.resultScoreValue.textContent = "-";
         el.resultDetail.textContent = "";
+        el.resultBadge.textContent = "";
         showScreen("result");
       });
     });
 
     function startQuiz(playerName) {
       state.playerName = playerName;
+      state.startDifficulty = state.selectedDifficulty;
+      state.currentLevelIndex = DIFFICULTY_LEVELS.indexOf(state.selectedDifficulty);
+      if (state.currentLevelIndex < 0) state.currentLevelIndex = 0;
+      state.totalCorrect = 0;
+      state.totalQuestions = 0;
+      state.reachedLevel = 0;
+      state.clearedTop = false;
+      state.pendingAnswers = [];
+      state.sessionId = generateUUID();
+      state.startedAt = new Date().toISOString();
       showScreen("loading");
 
       supabase
         .from("questions")
-        .select("id, question_text, explanation, musicals(title), choices(id, choice_text, is_correct, sort_order)")
+        .select("id, question_text, explanation, difficulty, choices(id, choice_text, is_correct, sort_order)")
         .then(function (res) {
           if (res.error) throw res.error;
           if (!res.data || res.data.length === 0) {
             throw new Error("問題データが見つかりませんでした。");
           }
-          var picked = shuffle(res.data).slice(0, QUESTIONS_PER_ROUND);
-          picked.forEach(function (q) {
+          var pool = {};
+          DIFFICULTY_LEVELS.forEach(function (level) { pool[level] = []; });
+          res.data.forEach(function (q) {
             q.choices = q.choices.slice().sort(function (a, b) { return a.sort_order - b.sort_order; });
+            if (pool[q.difficulty]) pool[q.difficulty].push(q);
           });
-          state.questions = picked;
-          state.currentIndex = 0;
-          state.correctCount = 0;
-          state.pendingAnswers = [];
-          state.sessionId = generateUUID();
-          state.startedAt = new Date().toISOString();
+          state.pool = pool;
 
-          renderQuestion();
-          showScreen("quiz");
+          startTierRound();
         })
         .catch(function (err) {
           showError("クイズの開始に失敗しました: " + err.message);
@@ -614,11 +711,29 @@
         });
     }
 
+    function startTierRound() {
+      var level = DIFFICULTY_LEVELS[state.currentLevelIndex];
+      var bucket = (state.pool && state.pool[level]) || [];
+      if (bucket.length === 0) {
+        showError("「" + level + "」の問題データが見つかりませんでした。");
+        showScreen("start");
+        return;
+      }
+      state.questions = shuffle(bucket).slice(0, Math.min(QUESTIONS_PER_ROUND, bucket.length));
+      state.currentIndex = 0;
+      state.tierCorrectCount = 0;
+
+      renderQuestion();
+      showScreen("quiz");
+    }
+
     function renderQuestion() {
       state.answered = false;
+      var level = DIFFICULTY_LEVELS[state.currentLevelIndex];
       var q = state.questions[state.currentIndex];
-      el.quizProgress.textContent = "問題 " + (state.currentIndex + 1) + " / " + state.questions.length;
-      el.quizMusical.textContent = q.musicals ? q.musicals.title : "";
+      el.quizProgress.textContent =
+        level + " - 問題 " + (state.currentIndex + 1) + " / " + state.questions.length;
+      el.quizMusical.textContent = TIER_BADGE[level] + " " + level;
       el.quizQuestion.textContent = q.question_text;
       el.quizExplanation.classList.add("hidden");
       el.quizExplanation.textContent = "";
@@ -653,7 +768,10 @@
         }
       });
       if (!choice.is_correct) btnEl.classList.add("incorrect");
-      if (choice.is_correct) state.correctCount += 1;
+      if (choice.is_correct) {
+        state.tierCorrectCount += 1;
+        state.totalCorrect += 1;
+      }
 
       if (choice.is_correct) {
         el.quizFeedback.textContent = "◯ 正解！";
@@ -669,7 +787,7 @@
         el.quizExplanation.classList.remove("hidden");
       }
       el.btnNext.classList.remove("hidden");
-      el.btnNext.textContent = state.currentIndex === state.questions.length - 1 ? "結果を見る" : "次へ";
+      el.btnNext.textContent = state.currentIndex === state.questions.length - 1 ? "結果を確認する" : "次へ";
 
       state.pendingAnswers.push({
         session_id: state.sessionId,
@@ -684,19 +802,58 @@
         state.currentIndex += 1;
         renderQuestion();
       } else {
-        finishQuiz();
+        evaluateTierRound();
       }
+    });
+
+    function evaluateTierRound() {
+      state.totalQuestions += state.questions.length;
+      var level = DIFFICULTY_LEVELS[state.currentLevelIndex];
+      var passed = state.tierCorrectCount >= PASS_MIN_CORRECT;
+
+      if (!passed) {
+        finishQuiz();
+        return;
+      }
+
+      state.reachedLevel = state.currentLevelIndex + 1;
+
+      if (state.currentLevelIndex >= DIFFICULTY_LEVELS.length - 1) {
+        state.clearedTop = true;
+        finishQuiz();
+        return;
+      }
+
+      var nextLevel = DIFFICULTY_LEVELS[state.currentLevelIndex + 1];
+      el.tierClearTitle.textContent = TIER_BADGE[level] + " " + level + "突破！";
+      el.tierClearDetail.textContent =
+        level + "で" + state.tierCorrectCount + "/" + state.questions.length + "問正解。次は「" + nextLevel + "」に挑戦できます。";
+      showScreen("tierClear");
+    }
+
+    el.btnNextTier.addEventListener("click", function () {
+      state.currentLevelIndex += 1;
+      startTierRound();
     });
 
     function finishQuiz() {
       showScreen("loading");
-      var score = state.correctCount * 20;
 
       function showResult() {
-        el.resultScoreValue.textContent = score;
+        el.resultScoreValue.textContent = state.totalCorrect;
         el.resultDetail.textContent =
-          state.correctCount + " / " + state.questions.length + " 問正解" +
+          state.totalCorrect + " / " + state.totalQuestions + " 問正解（通算）" +
           (state.playerName ? "" : "（ゲスト参加のためランキング対象外です）");
+
+        if (state.clearedTop) {
+          el.resultBadge.textContent = "🎓 ミュージカル博士！全段位クリア";
+        } else if (state.reachedLevel > 0) {
+          var reachedLabel = DIFFICULTY_LEVELS[state.reachedLevel - 1];
+          el.resultBadge.textContent = TIER_BADGE[reachedLabel] + " " + reachedLabel + "突破";
+        } else {
+          el.resultBadge.textContent = DIFFICULTY_LEVELS[state.currentLevelIndex] + "で敗退…";
+        }
+
         showScreen("result");
       }
 
@@ -705,9 +862,13 @@
         .insert({
           id: state.sessionId,
           player_name: state.playerName,
-          total_questions: state.questions.length,
-          correct_count: state.correctCount,
-          score: score,
+          start_difficulty: state.startDifficulty,
+          reached_level: state.reachedLevel,
+          reached_difficulty: state.reachedLevel > 0 ? DIFFICULTY_LEVELS[state.reachedLevel - 1] : null,
+          cleared_top: state.clearedTop,
+          total_questions: state.totalQuestions,
+          correct_count: state.totalCorrect,
+          score: state.totalCorrect * 20,
           started_at: state.startedAt,
           finished_at: new Date().toISOString(),
         })
@@ -731,7 +892,8 @@
       return supabase
         .from("leaderboard")
         .select("*")
-        .order("best_score", { ascending: false })
+        .order("reached_level", { ascending: false })
+        .order("correct_count", { ascending: false })
         .limit(5)
         .then(function (res) {
           el.leaderboardList.innerHTML = "";
@@ -745,10 +907,18 @@
             var li = document.createElement("li");
             var nameSpan = document.createElement("span");
             nameSpan.textContent = row.display_name || "プレイヤー";
-            var scoreSpan = document.createElement("span");
-            scoreSpan.textContent = row.best_score + "点";
+            var badgeSpan = document.createElement("span");
+            var label;
+            if (row.cleared_top) {
+              label = "🎓 博士（" + row.correct_count + "/" + row.total_questions + "）";
+            } else if (row.reached_difficulty) {
+              label = TIER_BADGE[row.reached_difficulty] + " " + row.reached_difficulty + "突破（" + row.correct_count + "/" + row.total_questions + "）";
+            } else {
+              label = "挑戦中（" + row.correct_count + "/" + row.total_questions + "）";
+            }
+            badgeSpan.textContent = label;
             li.appendChild(nameSpan);
-            li.appendChild(scoreSpan);
+            li.appendChild(badgeSpan);
             el.leaderboardList.appendChild(li);
           });
         });
