@@ -191,6 +191,94 @@
   #screen-milestone .card { text-align: center; }
   .milestone-emoji { font-size: 2.4rem; margin-bottom: 6px; }
 
+  .player-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    padding: 10px 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tab-btn.selected { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { margin-bottom: 14px; }
+
+  .name-error {
+    text-align: left;
+    font-size: 0.82rem;
+    color: #ffb4b1;
+    margin: -8px 0 12px;
+  }
+
+  .existing-players-list {
+    max-height: 260px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .existing-player-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    text-align: left;
+  }
+  .existing-player-name { font-weight: 700; font-size: 0.92rem; }
+  .existing-player-badge { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
+  .existing-player-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .existing-player-actions button {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .existing-player-actions button:hover { border-color: var(--accent-dim); color: var(--text); }
+  .existing-player-actions .btn-row-start { color: var(--accent); border-color: var(--accent-dim); }
+  .existing-players-empty { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 10px 0; }
+
+  #screen-analysis .card { text-align: left; }
+  .analysis-type {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+  .analysis-sub {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin: 0 0 20px;
+  }
+  .analysis-cat-row { margin-bottom: 12px; }
+  .analysis-cat-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+  .analysis-cat-bar { height: 8px; border-radius: 999px; background: #1f1329; overflow: hidden; }
+  .analysis-cat-bar-fill { height: 100%; border-radius: 999px; background: var(--accent-dim); }
+  .analysis-cat-row.is-strong .analysis-cat-bar-fill { background: var(--correct); }
+  .analysis-cat-row.is-weak .analysis-cat-bar-fill { background: var(--incorrect); }
+  .analysis-comment { font-size: 0.85rem; color: var(--text-dim); margin: 18px 0 0; line-height: 1.7; }
+
   .card {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -408,22 +496,47 @@
           <button type="button" class="mode-pill" data-mode="random">ランダム（復習）</button>
         </div>
 
-        <label for="input-player-name" class="muted" style="display:block;text-align:left;margin-bottom:6px;font-size:0.85rem;">
-          お名前（入力すると記録され、続きから遊べます。空欄ならゲスト参加＝記録なし）
-        </label>
-        <input
-          id="input-player-name"
-          type="text"
-          maxlength="20"
-          placeholder="例）びっきぃ"
-          style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:#1f1329;color:var(--text);font-size:0.98rem;margin-bottom:14px;"
-        />
+        <div class="player-tabs">
+          <button type="button" id="tab-new" class="tab-btn selected">新規登録</button>
+          <button type="button" id="tab-existing" class="tab-btn">登録済みから選ぶ</button>
+        </div>
 
-        <button id="btn-start-named" class="btn btn-primary" disabled>この名前で始める・続ける</button>
-        <div class="spacer"></div>
+        <div id="panel-new" class="tab-panel">
+          <label for="input-player-name" class="muted" style="display:block;text-align:left;margin-bottom:6px;font-size:0.85rem;">
+            お名前（新規登録。すでに使われている名前は選べません）
+          </label>
+          <input
+            id="input-player-name"
+            type="text"
+            maxlength="20"
+            placeholder="例）びっきぃ"
+            style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:#1f1329;color:var(--text);font-size:0.98rem;margin-bottom:8px;"
+          />
+          <p class="name-error hidden" id="name-error"></p>
+          <button id="btn-start-named" class="btn btn-primary" disabled>この名前で登録してスタート</button>
+        </div>
+
+        <div id="panel-existing" class="tab-panel hidden">
+          <p class="muted" style="margin-top:0;font-size:0.85rem;">成績を見て、自分の名前を選んでください。</p>
+          <div class="existing-players-list" id="existing-players-list">
+            <div class="existing-players-empty">読み込み中...</div>
+          </div>
+        </div>
+
         <button id="btn-start-guest" class="btn btn-secondary">ゲストとして始める</button>
         <div class="spacer"></div>
         <button id="btn-view-leaderboard" class="btn btn-secondary">ランキングを見る</button>
+      </div>
+    </div>
+
+    <div id="screen-analysis" class="hidden">
+      <div class="card">
+        <p class="analysis-type" id="analysis-type">診断中...</p>
+        <p class="analysis-sub" id="analysis-sub"></p>
+        <div id="analysis-categories"></div>
+        <p class="analysis-comment" id="analysis-comment"></p>
+        <div class="spacer"></div>
+        <button id="btn-analysis-back" class="btn btn-primary">スタート画面に戻る</button>
       </div>
     </div>
 
@@ -566,13 +679,25 @@
       quiz: document.getElementById("screen-quiz"),
       milestone: document.getElementById("screen-milestone"),
       result: document.getElementById("screen-result"),
+      analysis: document.getElementById("screen-analysis"),
       difficultySelect: document.getElementById("difficulty-select"),
       modeSelect: document.getElementById("mode-select"),
+      tabNew: document.getElementById("tab-new"),
+      tabExisting: document.getElementById("tab-existing"),
+      panelNew: document.getElementById("panel-new"),
+      panelExisting: document.getElementById("panel-existing"),
+      existingPlayersList: document.getElementById("existing-players-list"),
+      nameError: document.getElementById("name-error"),
       inputPlayerName: document.getElementById("input-player-name"),
       btnStartNamed: document.getElementById("btn-start-named"),
       btnStartGuest: document.getElementById("btn-start-guest"),
       btnViewLeaderboard: document.getElementById("btn-view-leaderboard"),
       btnBackFromLeaderboard: document.getElementById("btn-back-from-leaderboard"),
+      btnAnalysisBack: document.getElementById("btn-analysis-back"),
+      analysisType: document.getElementById("analysis-type"),
+      analysisSub: document.getElementById("analysis-sub"),
+      analysisCategories: document.getElementById("analysis-categories"),
+      analysisComment: document.getElementById("analysis-comment"),
       btnNext: document.getElementById("btn-next"),
       btnQuizStop: document.getElementById("btn-quiz-stop"),
       btnMilestoneContinue: document.getElementById("btn-milestone-continue"),
@@ -610,10 +735,31 @@
     var questionPoolPromise = null; // 200問は初回だけ取得してキャッシュする
 
     function showScreen(name) {
-      ["loading", "start", "quiz", "milestone", "result"].forEach(function (key) {
+      ["loading", "start", "quiz", "milestone", "result", "analysis"].forEach(function (key) {
         el[key].classList.toggle("hidden", key !== name);
       });
     }
+
+    // ------------------------------------------------------------
+    // 出題傾向カテゴリ（タイプ診断用）
+    // ------------------------------------------------------------
+    var TOPIC_CATEGORIES = ["キャスト・俳優", "記録・データ", "舞台裏トリビア", "劇団四季", "楽曲", "あらすじ・キャラクター"];
+    var TYPE_LABEL = {
+      "キャスト・俳優": "🎭 キャスト表暗記タイプ",
+      "記録・データ": "📊 ロングラン記録オタクタイプ",
+      "舞台裏トリビア": "🔧 舞台裏マニアタイプ",
+      "劇団四季": "🗼 四季劇場通い詰めタイプ",
+      "楽曲": "🎵 サントラ脳内再生タイプ",
+      "あらすじ・キャラクター": "📖 物語どっぷり没入タイプ",
+    };
+    var TYPE_COMMENT = {
+      "キャスト・俳優": "誰が何を演じたか、演出家や振付師の名前まで頭に入っている「楽屋通」タイプです。",
+      "記録・データ": "ロングラン記録やトニー賞の受賞歴など、数字とデータに強い「ミュージカル統計マニア」タイプです。",
+      "舞台裏トリビア": "舞台装置や衣装、特殊メイクなど「どう作られているか」に目が行く舞台裏派です。",
+      "劇団四季": "劇団四季の歴史や劇場、独自メソッドまで詳しい、生粋の四季ファンタイプです。",
+      "楽曲": "曲名やメロディが真っ先に思い浮かぶ、耳で覚えている音楽派タイプです。",
+      "あらすじ・キャラクター": "物語やキャラクターの心情にどっぷり浸かって観る、王道の物語派タイプです。",
+    };
 
     // ------------------------------------------------------------
     // 難易度・出題モード選択
@@ -684,7 +830,7 @@
       if (!questionPoolPromise) {
         questionPoolPromise = supabase
           .from("questions")
-          .select("id, question_text, explanation, difficulty, choices(id, choice_text, is_correct, sort_order)")
+          .select("id, question_text, explanation, difficulty, topic_category, choices(id, choice_text, is_correct, sort_order)")
           .then(function (res) {
             if (res.error) throw res.error;
             if (!res.data || res.data.length === 0) {
@@ -707,9 +853,10 @@
     }
 
     // ------------------------------------------------------------
-    // プレイヤー名の解決（既存名なら継続、新規なら登録。重複はDBのユニーク制約で防止）
+    // プレイヤー名の登録・照会
     // ------------------------------------------------------------
-    function resolvePlayer(name) {
+    // 新規登録: 既に使われている名前ならエラーにする（意図しない名前かぶりを防ぐ）
+    function registerNewPlayer(name) {
       return supabase
         .from("players")
         .select("id")
@@ -717,7 +864,9 @@
         .then(function (res) {
           if (res.error) throw res.error;
           if (res.data && res.data.length > 0) {
-            return res.data[0].id;
+            var takenErr = new Error("NAME_TAKEN");
+            takenErr.nameTaken = true;
+            throw takenErr;
           }
           var newId = generateUUID();
           return supabase
@@ -725,39 +874,142 @@
             .insert({ id: newId, display_name: name })
             .then(function (insRes) {
               if (insRes.error) {
-                // 同時に同じ新規名で登録された等のレースは再検索してフォールバック
-                return supabase
-                  .from("players")
-                  .select("id")
-                  .eq("display_name", name)
-                  .then(function (res2) {
-                    if (res2.data && res2.data.length > 0) return res2.data[0].id;
-                    throw insRes.error;
-                  });
+                // ほぼ同時に同じ名前で登録された等のレースも「登録済み」として扱う
+                var takenErr2 = new Error("NAME_TAKEN");
+                takenErr2.nameTaken = true;
+                throw takenErr2;
               }
               return newId;
             });
         });
     }
 
+    // 登録済みプレイヤーの照会（一覧から選ぶ場合。必ず存在する前提）
+    function lookupPlayerId(name) {
+      return supabase
+        .from("players")
+        .select("id")
+        .eq("display_name", name)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          if (res.data && res.data.length > 0) return res.data[0].id;
+          throw new Error("プレイヤーが見つかりませんでした。");
+        });
+    }
+
+    function formatBadge(row) {
+      if (row.cleared_top) {
+        return "🎓 博士（" + row.total_correct + "/" + row.total_questions + "）";
+      }
+      if (row.reached_difficulty) {
+        return TIER_BADGE[row.reached_difficulty] + " " + row.reached_difficulty + "突破（" + row.total_correct + "/" + row.total_questions + "）";
+      }
+      return "挑戦中（" + row.total_correct + "/" + row.total_questions + "）";
+    }
+
     // ------------------------------------------------------------
     // 開始画面
     // ------------------------------------------------------------
+    el.tabNew.addEventListener("click", function () {
+      el.tabNew.classList.add("selected");
+      el.tabExisting.classList.remove("selected");
+      el.panelNew.classList.remove("hidden");
+      el.panelExisting.classList.add("hidden");
+    });
+
+    el.tabExisting.addEventListener("click", function () {
+      el.tabExisting.classList.add("selected");
+      el.tabNew.classList.remove("selected");
+      el.panelExisting.classList.remove("hidden");
+      el.panelNew.classList.add("hidden");
+      loadExistingPlayers();
+    });
+
+    function loadExistingPlayers() {
+      el.existingPlayersList.innerHTML = '<div class="existing-players-empty">読み込み中...</div>';
+      return supabase
+        .from("leaderboard")
+        .select("*")
+        .order("reached_level", { ascending: false })
+        .order("total_correct", { ascending: false })
+        .then(function (res) {
+          el.existingPlayersList.innerHTML = "";
+          if (res.error || !res.data || res.data.length === 0) {
+            el.existingPlayersList.innerHTML = '<div class="existing-players-empty">まだ登録されているプレイヤーがいません</div>';
+            return;
+          }
+          res.data.forEach(function (row) {
+            var wrap = document.createElement("div");
+            wrap.className = "existing-player-row";
+
+            var info = document.createElement("div");
+            var nameDiv = document.createElement("div");
+            nameDiv.className = "existing-player-name";
+            nameDiv.textContent = row.display_name;
+            var badgeDiv = document.createElement("div");
+            badgeDiv.className = "existing-player-badge";
+            badgeDiv.textContent = formatBadge(row);
+            info.appendChild(nameDiv);
+            info.appendChild(badgeDiv);
+
+            var actions = document.createElement("div");
+            actions.className = "existing-player-actions";
+            var startBtn = document.createElement("button");
+            startBtn.type = "button";
+            startBtn.className = "btn-row-start";
+            startBtn.textContent = "スタート";
+            startBtn.addEventListener("click", function () {
+              startQuiz(row.display_name);
+            });
+            var analysisBtn = document.createElement("button");
+            analysisBtn.type = "button";
+            analysisBtn.textContent = "📊 分析";
+            analysisBtn.addEventListener("click", function () {
+              showAnalysis(row.display_name);
+            });
+            actions.appendChild(startBtn);
+            actions.appendChild(analysisBtn);
+
+            wrap.appendChild(info);
+            wrap.appendChild(actions);
+            el.existingPlayersList.appendChild(wrap);
+          });
+        })
+        .catch(function () {
+          el.existingPlayersList.innerHTML = '<div class="existing-players-empty">読み込みに失敗しました</div>';
+        });
+    }
+
     el.inputPlayerName.addEventListener("input", function () {
       el.btnStartNamed.disabled = el.inputPlayerName.value.trim().length === 0;
+      el.nameError.classList.add("hidden");
     });
 
     el.inputPlayerName.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !el.btnStartNamed.disabled) {
         e.preventDefault();
-        startQuiz(el.inputPlayerName.value.trim());
+        el.btnStartNamed.click();
       }
     });
 
     el.btnStartNamed.addEventListener("click", function () {
       var name = el.inputPlayerName.value.trim();
       if (!name) return;
-      startQuiz(name);
+      el.nameError.classList.add("hidden");
+      el.btnStartNamed.disabled = true;
+      registerNewPlayer(name)
+        .then(function () {
+          startQuiz(name);
+        })
+        .catch(function (err) {
+          el.btnStartNamed.disabled = false;
+          if (err.nameTaken) {
+            el.nameError.textContent = "その名前は既に登録されています。「登録済みから選ぶ」タブからお選びください。";
+          } else {
+            el.nameError.textContent = "登録に失敗しました: " + err.message;
+          }
+          el.nameError.classList.remove("hidden");
+        });
     });
 
     el.btnStartGuest.addEventListener("click", function () {
@@ -776,6 +1028,10 @@
       showScreen("start");
     });
 
+    el.btnAnalysisBack.addEventListener("click", function () {
+      showScreen("start");
+    });
+
     el.btnViewLeaderboard.addEventListener("click", function () {
       showScreen("loading");
       loadLeaderboard().then(function () {
@@ -789,7 +1045,7 @@
       state.currentMode = state.selectedMode;
       showScreen("loading");
 
-      (playerName ? resolvePlayer(playerName) : Promise.resolve(null))
+      (playerName ? lookupPlayerId(playerName) : Promise.resolve(null))
         .then(function (playerId) {
           state.playerId = playerId;
           return getQuestionPool().then(function (pool) {
@@ -1037,20 +1293,127 @@
             var nameSpan = document.createElement("span");
             nameSpan.textContent = row.display_name || "プレイヤー";
             var badgeSpan = document.createElement("span");
-            var label;
-            if (row.cleared_top) {
-              label = "🎓 博士（" + row.total_correct + "/" + row.total_questions + "）";
-            } else if (row.reached_difficulty) {
-              label = TIER_BADGE[row.reached_difficulty] + " " + row.reached_difficulty + "突破（" + row.total_correct + "/" + row.total_questions + "）";
-            } else {
-              label = "挑戦中（" + row.total_correct + "/" + row.total_questions + "）";
-            }
-            badgeSpan.textContent = label;
+            badgeSpan.textContent = formatBadge(row);
             li.appendChild(nameSpan);
             li.appendChild(badgeSpan);
             el.leaderboardList.appendChild(li);
           });
         });
+    }
+
+    // ------------------------------------------------------------
+    // タイプ診断（プレイヤーの得意・不得意カテゴリを分析）
+    // ------------------------------------------------------------
+    function computeCategoryStats(allQuestions, correctSet) {
+      var stats = {};
+      TOPIC_CATEGORIES.forEach(function (cat) {
+        var bucket = allQuestions.filter(function (q) { return q.topic_category === cat; });
+        var correct = bucket.filter(function (q) { return correctSet.has(q.id); }).length;
+        stats[cat] = {
+          correct: correct,
+          total: bucket.length,
+          ratio: bucket.length > 0 ? correct / bucket.length : 0,
+        };
+      });
+      return stats;
+    }
+
+    function showAnalysis(name) {
+      showScreen("loading");
+      lookupPlayerId(name)
+        .then(function (playerId) {
+          return getQuestionPool().then(function (pool) {
+            var allQuestions = DIFFICULTY_LEVELS.reduce(function (acc, level) {
+              return acc.concat(pool[level]);
+            }, []);
+            return supabase
+              .from("question_progress")
+              .select("question_id")
+              .eq("player_id", playerId)
+              .then(function (res) {
+                if (res.error) throw res.error;
+                var correctSet = new Set((res.data || []).map(function (r) { return r.question_id; }));
+                renderAnalysis(name, allQuestions, correctSet);
+              });
+          });
+        })
+        .catch(function (err) {
+          showError("分析に失敗しました: " + err.message);
+          showScreen("start");
+        });
+    }
+
+    function renderAnalysis(name, allQuestions, correctSet) {
+      var totalCorrect = allQuestions.filter(function (q) { return correctSet.has(q.id); }).length;
+      var totalQuestions = allQuestions.length;
+
+      if (totalCorrect === 0) {
+        el.analysisType.textContent = "🌱 " + name + "さんは、これから開拓タイプ";
+        el.analysisSub.textContent = "まだ正解データがありません。まずは1問、遊んでみましょう。";
+        el.analysisCategories.innerHTML = "";
+        el.analysisComment.textContent = "";
+        showScreen("analysis");
+        return;
+      }
+
+      var catStats = computeCategoryStats(allQuestions, correctSet);
+      var ranked = TOPIC_CATEGORIES.slice().sort(function (a, b) { return catStats[b].ratio - catStats[a].ratio || catStats[b].correct - catStats[a].correct; });
+      var strongest = ranked[0];
+      var weakest = ranked[ranked.length - 1];
+
+      var clearedAll = DIFFICULTY_LEVELS.every(function (tier) {
+        var bucket = allQuestions.filter(function (q) { return q.difficulty === tier; });
+        var correct = bucket.filter(function (q) { return correctSet.has(q.id); }).length;
+        return bucket.length > 0 && correct / bucket.length >= PASS_RATIO;
+      });
+
+      if (clearedAll) {
+        el.analysisType.textContent = "🎓 " + name + "さんは、ミュージカル博士タイプ";
+        el.analysisSub.textContent = "全段位を制覇済み。もはや弱点らしい弱点はありません。";
+      } else {
+        el.analysisType.textContent = name + "さんは、" + TYPE_LABEL[strongest];
+        el.analysisSub.textContent = TYPE_COMMENT[strongest];
+      }
+
+      el.analysisCategories.innerHTML = "";
+      ranked.forEach(function (cat) {
+        var s = catStats[cat];
+        var row = document.createElement("div");
+        row.className = "analysis-cat-row";
+        if (cat === strongest && s.correct > 0) row.classList.add("is-strong");
+        if (cat === weakest && cat !== strongest) row.classList.add("is-weak");
+
+        var label = document.createElement("div");
+        label.className = "analysis-cat-label";
+        var nameSpan = document.createElement("span");
+        nameSpan.textContent = cat;
+        var valSpan = document.createElement("span");
+        valSpan.textContent = s.correct + "/" + s.total;
+        label.appendChild(nameSpan);
+        label.appendChild(valSpan);
+
+        var bar = document.createElement("div");
+        bar.className = "analysis-cat-bar";
+        var fill = document.createElement("div");
+        fill.className = "analysis-cat-bar-fill";
+        fill.style.width = Math.min(100, s.ratio * 100) + "%";
+        bar.appendChild(fill);
+
+        row.appendChild(label);
+        row.appendChild(bar);
+        el.analysisCategories.appendChild(row);
+      });
+
+      var comment = "通算 " + totalCorrect + "/" + totalQuestions + "問正解。";
+      if (!clearedAll) {
+        comment += " 得意分野は「" + strongest + "」、苦手分野は「" + weakest + "」のようです。" + TYPE_COMMENT[strongest];
+        if (weakest !== strongest && catStats[weakest].correct < catStats[weakest].total) {
+          comment += "「" + weakest + "」の問題も未正解優先モードで狙ってみると、バランスよく伸ばせます。";
+        }
+      }
+      el.analysisComment.textContent = comment;
+
+      showScreen("analysis");
     }
 
     // ------------------------------------------------------------
