@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import type {
   Work,
   Theater,
@@ -11,8 +12,18 @@ import { regionGroupKeyForTheater, type RegionGroupKey } from "@/lib/region-grou
 import FilterBar from "./FilterBar";
 import CardGridView from "./CardGridView";
 import TimelineView from "./TimelineView";
-import MapView from "./MapView";
 import TicketReleaseList from "./TicketReleaseList";
+
+// 地図ライブラリ（Leaflet）はブラウザのwindow/documentに依存しているため、
+// サーバー側では描画せず、クライアント側でのみ読み込む。
+const MapView = dynamic(() => import("./MapView"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[70vh] items-center justify-center rounded-xl border border-neutral-200 text-sm text-neutral-400">
+      地図を読み込み中…
+    </div>
+  ),
+});
 
 type TopTab = "search" | "release";
 type ViewMode = "card" | "timeline" | "map";
@@ -41,7 +52,7 @@ export default function ScheduleShell({
 }) {
   const [topTab, setTopTab] = useState<TopTab>("search");
   const [viewMode, setViewMode] = useState<ViewMode>("card");
-   const [selectedRegionGroups, setSelectedRegionGroups] = useState<RegionGroupKey[]>([]);
+  const [selectedRegionGroups, setSelectedRegionGroups] = useState<RegionGroupKey[]>([]);
   const [selectedWorkIds, setSelectedWorkIds] = useState<string[]>([]);
 
   const filteredSchedules = useMemo(() => {
