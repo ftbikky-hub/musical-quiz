@@ -11,6 +11,15 @@ const APPS = [
     external: false,
   },
   {
+    href: "/cast",
+    title: "劇団四季 過去キャスト一覧（非公式）",
+    description:
+      "演目・劇場・役名・役者名で過去のキャストを検索。役のピン留め、出演者ページ、共演ランキングなどが見られます。",
+    accent: "#6b4fa0",
+    emoji: "🎫",
+    external: false,
+  },
+  {
     href: "/quiz.html",
     title: "ミュージカルクイズ",
     description: "ミュージカル雑学クイズに挑戦して、スコアを競えます。",
@@ -33,7 +42,7 @@ export default function EntryPage() {
         </p>
       </div>
 
-      <div className="grid w-full max-w-3xl gap-5 sm:grid-cols-2">
+      <div className="grid w-full max-w-4xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {APPS.map((app) => (
           <Link
             key={app.href}
