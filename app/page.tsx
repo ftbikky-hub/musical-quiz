@@ -1,78 +1,95 @@
 import Link from "next/link";
 
-const APPS = [
-  {
-    href: "/schedule",
-    title: "劇団四季スケジュール（非公式）",
-    description:
-      "公演スケジュール（カード／タイムライン／マップ）とチケット発売予定を確認できます。",
-    accent: "#2c665c",
-    emoji: "🎭",
-    external: false,
-  },
-  {
-    href: "/cast",
-    title: "劇団四季 過去キャスト一覧（非公式）",
-    description:
-      "演目・劇場・役名・役者名で過去のキャストを検索。役のピン留め、出演者ページ、共演ランキングなどが見られます。",
-    accent: "#6b4fa0",
-    emoji: "🎫",
-    external: false,
-  },
-  {
-    href: "/quiz.html",
-    title: "ミュージカルクイズ",
-    description: "ミュージカル雑学クイズに挑戦して、スコアを競えます。",
-    accent: "#a8752a",
-    emoji: "🎟️",
-    external: true,
-  },
-];
-
-export default function EntryPage() {
+export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-10 bg-neutral-50 px-6 py-16 text-neutral-900">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <p className="text-xs font-mono tracking-widest text-neutral-500 uppercase">
-          entrance
-        </p>
-        <h1 className="text-3xl font-bold sm:text-4xl">アプリを選ぶ</h1>
-        <p className="max-w-md text-sm text-neutral-500">
-          どちらも個人用のツールです。公式の劇団四季・各権利元とは関係ありません。
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+      <div className="max-w-4xl w-full space-y-8">
+        <div className="text-center space-y-4">
+          <p className="text-sm font-medium text-gray-500 uppercase tracking-widest">
+            ENTRANCE
+          </p>
+          <h1 className="text-4xl font-extrabold text-gray-900">
+            アプリを選ぶ
+          </h1>
+          <p className="text-gray-600">
+            どれも個人用のツールです。公式の劇団四季・各権利元とは関係ありません。
+          </p>
+        </div>
 
-      <div className="grid w-full max-w-4xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {APPS.map((app) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link
-            key={app.href}
-            href={app.href}
-            className="group flex flex-col justify-between gap-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            href="/schedule"
+            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
           >
-            <div className="flex flex-col gap-3">
-              <span
-                className="flex h-12 w-12 items-center justify-center rounded-xl text-2xl"
-                style={{ backgroundColor: `${app.accent}1a` }}
-              >
-                {app.emoji}
-              </span>
-              <h2 className="text-lg font-bold">{app.title}</h2>
-              <p className="text-sm leading-relaxed text-neutral-500">
-                {app.description}
-              </p>
+            <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="text-2xl">🎭</span>
             </div>
-            <span
-              className="inline-flex items-center gap-1 text-sm font-bold"
-              style={{ color: app.accent }}
-            >
-              開く
-              <span className="transition group-hover:translate-x-0.5">
-                →
-              </span>
-            </span>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              劇団四季スケジュール（非公式）
+            </h2>
+            <p className="text-gray-600 text-sm flex-grow">
+              公演スケジュール（カード／タイムライン／マップ）とチケット発売予定を確認できます。
+            </p>
+            <div className="text-blue-600 font-medium text-sm mt-4">
+              開く &rarr;
+            </div>
           </Link>
-        ))}
+
+          <Link
+            href="/cast"
+            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
+          >
+            <div className="h-12 w-12 bg-amber-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="text-2xl">🎫</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              劇団四季 過去キャスト一覧（非公式）
+            </h2>
+            <p className="text-gray-600 text-sm flex-grow">
+              演目・劇場・役名・役者名で過去のキャストを検索。役のピン留め、出演者ページ、共演ランキングなどが見られます。
+            </p>
+            <div className="text-blue-600 font-medium text-sm mt-4">
+              開く &rarr;
+            </div>
+          </Link>
+
+          <Link
+            href="/youtube"
+            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
+          >
+            <div className="h-12 w-12 bg-red-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="text-2xl">▶️</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              劇団四季 公式YouTube動画一覧
+            </h2>
+            <p className="text-gray-600 text-sm flex-grow">
+              劇団四季の公式YouTube動画一覧。演目やキャストで検索できます。
+            </p>
+            <div className="text-blue-600 font-medium text-sm mt-4">
+              開く &rarr;
+            </div>
+          </Link>
+
+          <Link
+            href="#"
+            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col opacity-75"
+          >
+            <div className="h-12 w-12 bg-rose-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="text-2xl">🎟️</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              ミュージカルクイズ
+            </h2>
+            <p className="text-gray-600 text-sm flex-grow">
+              ミュージカル雑学クイズに挑戦して、スコアを競えます。
+            </p>
+            <div className="text-gray-400 font-medium text-sm mt-4">
+              準備中...
+            </div>
+          </Link>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
