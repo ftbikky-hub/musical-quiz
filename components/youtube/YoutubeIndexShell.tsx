@@ -15,9 +15,13 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
   
   // フィルター用State
   const [selectedWorkId, setSelectedWorkId] = useState<number | "">("");
-  const [selectedPerformerId, setSelectedPerformerId] = useState<number | "">("");
   const [selectedTheaterId, setSelectedTheaterId] = useState<string | "">("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // 役者検索用（オートコンプリート）State
+  const [selectedPerformerId, setSelectedPerformerId] = useState<number | "">("");
+  const [performerInput, setPerformerInput] = useState("");
+  const [isPerformerDropdownOpen, setIsPerformerDropdownOpen] = useState(false);
 
   // 役者追加フォーム用State
   const [addingToVideoId, setAddingToVideoId] = useState<number | null>(null);
@@ -88,20 +92,67 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
               ))}
             </select>
           </div>
-          {/* 役者絞り込み */}
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">役者名（キャスト）</label>
-            <select
-              className="w-full border-gray-300 rounded-lg p-2 text-sm bg-white"
-              value={selectedPerformerId}
-              onChange={(e) => setSelectedPerformerId(e.target.value === "" ? "" : Number(e.target.value))}
-            >
-              <option value="">すべての役者</option>
-              {performers.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+          
+          {/* 役者絞り込み（オートコンプリート） */}
+          <div className="relative">
+            <label className="block text-sm text-gray-600 mb-1">役者名（予測検索）</label>
+            <div className="relative">
+              <input
+                type="text"
+                className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white pr-8"
+                placeholder="役者名を入力..."
+                value={performerInput}
+                onChange={(e) => {
+                  setPerformerInput(e.target.value);
+                  setIsPerformerDropdownOpen(true);
+                  if (e.target.value === "") {
+                    setSelectedPerformerId("");
+                  }
+                }}
+                onFocus={() => setIsPerformerDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setIsPerformerDropdownOpen(false), 200)}
+              />
+              {performerInput && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setPerformerInput("");
+                    setSelectedPerformerId("");
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {isPerformerDropdownOpen && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {performers
+                  .filter((p) => p.name.includes(performerInput))
+                  .map((p) => (
+                    <div
+                      key={p.id}
+                      className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-800"
+                      onClick={() => {
+                        setSelectedPerformerId(p.id);
+                        setPerformerInput(p.name);
+                        setIsPerformerDropdownOpen(false);
+                      }}
+                    >
+                      {p.name}
+                    </div>
+                  ))}
+                {performers.filter((p) => p.name.includes(performerInput)).length === 0 && (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    見つかりません
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
           {/* 劇場絞り込み */}
           <div>
             <label className="block text-sm text-gray-600 mb-1">劇場</label>
@@ -128,6 +179,13 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
           {message.text}
         </div>
       )}
+
+      {/* 役者追加時のサジェスト用リスト */}
+      <datalist id="performer-datalist">
+        {performers.map((p) => (
+          <option key={p.id} value={p.name} />
+        ))}
+      </datalist>
 
       {/* 動画リストエリア */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -190,11 +248,12 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
                   <form onSubmit={(e) => handleAddPerformer(e, video.id)} className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="役者名（例: 岡村美南）"
+                      placeholder="役者名を入力..."
                       className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs"
                       value={newPerformerName}
                       onChange={(e) => setNewPerformerName(e.target.value)}
                       disabled={isSubmitting}
+                      list="performer-datalist"
                       required
                     />
                     <button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50">
