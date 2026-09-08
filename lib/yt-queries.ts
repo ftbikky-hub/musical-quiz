@@ -115,28 +115,32 @@ export async function fetchFilterOptions() {
 }
 
 /**
- * 新しい役者をマスタに登録し、動画に手動で紐付ける
+ * 新しい役者をマスタに登録し、動画に手動で紐付ける。
+ * 画面側で即座に一覧へ反映できるよう、紐付けた役者の情報を返す。
  */
-export async function addPerformerToVideo(videoId: number, performerName: string) {
+export async function addPerformerToVideo(
+  videoId: number,
+  performerName: string
+): Promise<YtPerformer> {
   // 1. 役者マスタに存在するか確認、なければ追加
-  let performerId: number;
+  let performer: YtPerformer;
   const { data: existing } = await supabase
     .from("yt_performers")
-    .select("id")
+    .select("id, name")
     .eq("name", performerName)
     .single();
 
   if (existing) {
-    performerId = existing.id;
+    performer = existing;
   } else {
     const { data: newPerformer, error: insertError } = await supabase
       .from("yt_performers")
       .insert({ name: performerName })
-      .select("id")
+      .select("id, name")
       .single();
 
     if (insertError) throw insertError;
-    performerId = newPerformer.id;
+    performer = newPerformer;
   }
 
   // 2. 動画と役者を紐付け (source='manual'として登録)
@@ -144,12 +148,14 @@ export async function addPerformerToVideo(videoId: number, performerName: string
     .from("yt_video_performers")
     .insert({
       video_id: videoId,
-      performer_id: performerId,
+      performer_id: performer.id,
       source: "manual",
     });
 
   // 一意制約違反（すでに紐付け済み）のエラーコードは '23505'
-  if (linkError && linkError.code !== '23505') {
+  if (linkError && linkError.code !== "23505") {
     throw linkError;
   }
+
+  return performer;
 }

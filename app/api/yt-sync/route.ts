@@ -7,6 +7,21 @@ export const dynamic = 'force-dynamic';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const SHIKI_UPLOADS_PLAYLIST_ID = "UUdWRc7vSTDFSDL-ZT1ktQjA"; // UCをUUに変更
 
+interface PlaylistItemsResponse {
+  items?: { snippet?: { resourceId?: { videoId?: string } } }[];
+}
+
+interface VideoSnippet {
+  title: string;
+  description: string;
+  publishedAt: string;
+  thumbnails?: { high?: { url?: string }; default?: { url?: string } };
+}
+
+interface VideosListResponse {
+  items?: { id: string; snippet: VideoSnippet }[];
+}
+
 export async function GET(request: Request) {
   try {
     // 1. 認証チェック (Cron Secret)
@@ -29,8 +44,10 @@ export async function GET(request: Request) {
     const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${SHIKI_UPLOADS_PLAYLIST_ID}&key=${YOUTUBE_API_KEY}`;
     const playlistRes = await fetch(playlistUrl);
     if (!playlistRes.ok) throw new Error("Failed to fetch playlist");
-    const playlistData = await playlistRes.json();
-    const videoIds = playlistData.items.map((item: any) => item.snippet.resourceId.videoId);
+    const playlistData = (await playlistRes.json()) as PlaylistItemsResponse;
+    const videoIds = (playlistData.items ?? [])
+      .map((item) => item.snippet?.resourceId?.videoId)
+      .filter((id): id is string => Boolean(id));
 
     if (videoIds.length === 0) {
       return NextResponse.json({ message: "No videos found in playlist." });
@@ -40,7 +57,7 @@ export async function GET(request: Request) {
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoIds.join(",")}&key=${YOUTUBE_API_KEY}`;
     const videosRes = await fetch(videosUrl);
     if (!videosRes.ok) throw new Error("Failed to fetch video details");
-    const videosData = await videosRes.json();
+    const videosData = (await videosRes.json()) as VideosListResponse;
 
     // 4. マスタデータの取得 (演目、役者、劇場)
     const [worksRes, performersRes, theatersRes] = await Promise.all([
@@ -58,10 +75,10 @@ export async function GET(request: Request) {
     let performersAddedCount = 0;
 
     // 5. 各動画を処理してDBへUpsert
-    for (const item of videosData.items) {
+    for (const item of videosData.items ?? []) {
       const snippet = item.snippet;
       const title = snippet.title;
-      const description = snippet.description;
+      const description = snippet.description ?? "";
       const videoId = item.id;
       
       // 演目の判定
@@ -132,8 +149,9 @@ export async function GET(request: Request) {
       message: `Processed ${addedCount} videos. Added ${performersAddedCount} auto-performer links.` 
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("YouTube Sync Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

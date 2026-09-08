@@ -72,8 +72,8 @@ export default function Home() {
           </Link>
 
           <Link
-            href="#"
-            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col opacity-75"
+            href="/quiz.html"
+            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
           >
             <div className="h-12 w-12 bg-rose-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <span className="text-2xl">🎟️</span>
@@ -84,8 +84,8 @@ export default function Home() {
             <p className="text-gray-600 text-sm flex-grow">
               ミュージカル雑学クイズに挑戦して、スコアを競えます。
             </p>
-            <div className="text-gray-400 font-medium text-sm mt-4">
-              準備中...
+            <div className="text-blue-600 font-medium text-sm mt-4">
+              開く &rarr;
             </div>
           </Link>
         </div>

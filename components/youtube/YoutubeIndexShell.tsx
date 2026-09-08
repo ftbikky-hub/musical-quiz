@@ -49,13 +49,27 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
     setMessage(null);
 
     try {
-      await addPerformerToVideo(videoId, newPerformerName.trim());
-      setMessage({ type: 'success', text: '役者を追加しました！再読み込みすると反映されます。' });
+      const performer = await addPerformerToVideo(videoId, newPerformerName.trim());
+      // 一覧を再取得しなくてもすぐ画面に反映されるよう、その場でstateを更新する。
+      setVideos((prev) =>
+        prev.map((v) =>
+          v.id !== videoId
+            ? v
+            : {
+                ...v,
+                yt_video_performers: [
+                  ...v.yt_video_performers,
+                  { yt_performers: performer },
+                ],
+              }
+        )
+      );
+      setMessage({ type: "success", text: "役者を追加しました。" });
       setNewPerformerName("");
       setAddingToVideoId(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      setMessage({ type: 'error', text: 'エラーが発生したか、すでに追加済みです。' });
+      setMessage({ type: "error", text: "エラーが発生したか、すでに追加済みです。" });
     } finally {
       setIsSubmitting(false);
     }
@@ -199,6 +213,7 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
               className="block relative group aspect-video bg-gray-100"
             >
               {video.thumbnail_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-400">No Image</div>
