@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { Database } from "./types"; // 既存の型定義を流用（存在すれば）
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // 注意：ここでは NEXT_PUBLIC_ が付いていないサービスロールキーを使います
@@ -12,7 +11,7 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 }
 
 // サーバー側でのみ使用する、RLSをバイパスできる強力なクライアント
-export const supabaseAdmin = createClient<Database>(
+export const supabaseAdmin = createClient(
   supabaseUrl || "",
   supabaseServiceRoleKey || "",
   {
