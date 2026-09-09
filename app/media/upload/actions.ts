@@ -11,6 +11,7 @@ export async function addMedia(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const driveUrl = String(formData.get("driveUrl") ?? "").trim();
+  const thumbnailUrl = String(formData.get("thumbnailUrl") ?? "").trim();
 
   if (!VALID_TYPES.includes(type as (typeof VALID_TYPES)[number])) {
     throw new Error("種類の指定が正しくありません");
@@ -24,6 +25,10 @@ export async function addMedia(formData: FormData) {
     throw new Error("Googleドライブの共有リンクを正しく読み取れませんでした");
   }
 
+  if (thumbnailUrl && !extractDriveFileId(thumbnailUrl)) {
+    throw new Error("サムネイル画像のリンクを正しく読み取れませんでした");
+  }
+
   if (!supabaseAdmin) {
     throw new Error(
       "SUPABASE_SERVICE_ROLE_KEY が未設定です。.env.local を確認してください。"
@@ -35,6 +40,7 @@ export async function addMedia(formData: FormData) {
     title,
     description: description || null,
     drive_url: driveUrl,
+    thumbnail_url: thumbnailUrl || null,
   });
 
   if (error) {

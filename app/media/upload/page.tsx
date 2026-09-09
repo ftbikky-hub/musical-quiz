@@ -55,6 +55,16 @@ export default function UploadMediaPage() {
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
           />
         </label>
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-1">
+            サムネイル画像のGoogleドライブ共有リンク(任意、音楽におすすめ)
+          </span>
+          <input
+            name="thumbnailUrl"
+            placeholder="https://drive.google.com/file/d/.../view"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+          />
+        </label>
         <button
           type="submit"
           className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold"

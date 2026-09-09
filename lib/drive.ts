@@ -14,7 +14,12 @@ export function extractDriveFileId(url: string): string | null {
   return null;
 }
 
-/** iframeで埋め込み再生するためのURL */
+/** iframeで埋め込み再生するためのURL(動画・音楽・写真本体用) */
 export function driveEmbedUrl(fileId: string): string {
   return `https://drive.google.com/file/d/${fileId}/preview`;
+}
+
+/** <img>タグでそのまま表示できる画像URL(サムネイル画像用) */
+export function driveThumbnailUrl(fileId: string): string {
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
 }

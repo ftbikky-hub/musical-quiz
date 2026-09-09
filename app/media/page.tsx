@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { extractDriveFileId, driveEmbedUrl } from "@/lib/drive";
+import { extractDriveFileId, driveEmbedUrl, driveThumbnailUrl } from "@/lib/drive";
 import { DeleteMediaButton } from "@/components/media/DeleteMediaButton";
 import { deleteMedia } from "./actions";
 
@@ -14,6 +14,7 @@ type MediaItem = {
   title: string;
   description: string | null;
   drive_url: string;
+  thumbnail_url: string | null;
   created_at: string;
 };
 
@@ -36,6 +37,55 @@ function buildHref(q: string | undefined, type: MediaType | undefined) {
   if (type) params.set("type", type);
   const qs = params.toString();
   return qs ? `/media?${qs}` : "/media";
+}
+
+function MediaPreview({ item }: { item: MediaItem }) {
+  const fileId = extractDriveFileId(item.drive_url);
+  const thumbFileId = item.thumbnail_url ? extractDriveFileId(item.thumbnail_url) : null;
+
+  if (item.type === "audio") {
+    return (
+      <div className="bg-gray-100">
+        {thumbFileId && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={driveThumbnailUrl(thumbFileId)}
+            alt={item.title}
+            className="w-full aspect-square object-cover"
+          />
+        )}
+        {fileId ? (
+          <iframe
+            src={driveEmbedUrl(fileId)}
+            className="w-full h-24"
+            style={{ border: 0 }}
+            allow="autoplay"
+          />
+        ) : (
+          <div className="flex items-center justify-center h-24 text-gray-400 text-sm">
+            読み込めません
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative aspect-video bg-gray-100">
+      {fileId ? (
+        <iframe
+          src={driveEmbedUrl(fileId)}
+          className="w-full h-full"
+          style={{ border: 0 }}
+          allow="autoplay"
+        />
+      ) : (
+        <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+          読み込めません
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default async function MediaPage({
@@ -126,45 +176,26 @@ export default async function MediaPage({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {items?.map((item: MediaItem) => {
-          const fileId = extractDriveFileId(item.drive_url);
-          const isAudio = item.type === "audio";
-          return (
-            <div
-              key={item.id}
-              className="rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col bg-white"
-            >
-              <div
-                className={`relative bg-gray-100 ${isAudio ? "h-28" : "aspect-video"}`}
-              >
-                {fileId ? (
-                  <iframe
-                    src={driveEmbedUrl(fileId)}
-                    className="w-full h-full"
-                    style={{ border: 0 }}
-                    allow="autoplay"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                    読み込めません
-                  </div>
-                )}
-              </div>
-              <div className="p-4 flex-1 flex flex-col">
-                <span className="inline-block w-fit text-[10px] font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5 mb-1">
-                  {TYPE_LABELS[item.type]}
-                </span>
-                <h3 className="font-semibold text-sm mb-1 text-gray-800">{item.title}</h3>
-                {item.description && (
-                  <p className="text-xs text-gray-500 mb-2 line-clamp-2">{item.description}</p>
-                )}
-                <div className="mt-auto pt-2">
-                  <DeleteMediaButton id={item.id} action={deleteMedia} />
-                </div>
+        {items?.map((item: MediaItem) => (
+          <div
+            key={item.id}
+            className="rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col bg-white"
+          >
+            <MediaPreview item={item} />
+            <div className="p-4 flex-1 flex flex-col">
+              <span className="inline-block w-fit text-[10px] font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5 mb-1">
+                {TYPE_LABELS[item.type]}
+              </span>
+              <h3 className="font-semibold text-sm mb-1 text-gray-800">{item.title}</h3>
+              {item.description && (
+                <p className="text-xs text-gray-500 mb-2 line-clamp-2">{item.description}</p>
+              )}
+              <div className="mt-auto pt-2">
+                <DeleteMediaButton id={item.id} action={deleteMedia} />
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
