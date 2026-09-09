@@ -190,7 +190,13 @@ export default async function MediaPage({
               {item.description && (
                 <p className="text-xs text-gray-500 mb-2 line-clamp-2">{item.description}</p>
               )}
-              <div className="mt-auto pt-2">
+              <div className="mt-auto pt-2 flex items-center gap-3">
+                <Link
+                  href={`/media/${item.id}/edit`}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  編集
+                </Link>
                 <DeleteMediaButton id={item.id} action={deleteMedia} />
               </div>
             </div>
