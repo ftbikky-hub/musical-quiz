@@ -1,0 +1,8 @@
+# 既存の .env.local に、以下をそのまま追記してください(上書きではなく追記)
+# 既存の NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY はそのまま残してOKです(別プロジェクトなので競合しません)
+
+NEXT_PUBLIC_VIDEOS_SUPABASE_URL=https://vysaumatasjdwfhryhyf.supabase.co
+NEXT_PUBLIC_VIDEOS_SUPABASE_ANON_KEY=sb_publishable_uOVOWxhyLz2YVv40obLeoA_SHp-7N8f
+
+# Supabaseダッシュボード(personal-videosプロジェクト) > Project Settings > API Keys > service_role から取得して貼り付け
+VIDEOS_SUPABASE_SERVICE_ROLE_KEY=
