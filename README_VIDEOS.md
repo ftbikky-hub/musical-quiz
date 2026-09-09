@@ -5,12 +5,13 @@
 
 ## 展開方法
 
-このZIPの中身を`musical-quiz-main/`直下に展開してください。既存ファイルは上書きしません(すべて新規ファイルです)。
+このZIPの中身を`musical-quiz-main/`直下に展開してください。
 
 - `app/videos/page.tsx` — 新規
 - `app/videos/upload/page.tsx` — 新規
 - `app/videos/upload/actions.ts` — 新規
 - `lib/drive.ts` — 新規
+- `app/page.tsx` — **これだけ既存ファイルを上書きします**(トップページに「動画」カードを1枚追加したバージョンです。他のカードの見た目・順番はそのままで、末尾に追加しています)
 
 `lib/supabase/client.ts`・`admin.ts`はそのまま使うので、今回は含めていません。
 
