@@ -1,31 +1,50 @@
+import Link from "next/link";
 import { addVideo } from "./actions";
 
 export default function UploadVideoPage() {
   return (
-    <main style={{ maxWidth: 480, margin: "0 auto", padding: "2rem 1rem" }}>
-      <h1 style={{ fontSize: "1.5rem", marginBottom: "1.5rem" }}>動画を追加</h1>
-      <form action={addVideo} style={{ display: "grid", gap: "1rem" }}>
-        <label>
-          タイトル
-          <input name="title" required style={{ width: "100%", padding: "0.5rem" }} />
+    <div className="max-w-md mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">動画を追加</h1>
+        <Link href="/videos" className="text-sm text-blue-600 hover:underline">
+          &larr; 動画一覧に戻る
+        </Link>
+      </div>
+
+      <form action={addVideo} className="space-y-4">
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-1">タイトル</span>
+          <input
+            name="title"
+            required
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+          />
         </label>
-        <label>
-          説明(任意)
-          <textarea name="description" style={{ width: "100%", padding: "0.5rem" }} />
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-1">説明(任意)</span>
+          <textarea
+            name="description"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+          />
         </label>
-        <label>
-          Googleドライブの共有リンク
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-1">
+            Googleドライブの共有リンク
+          </span>
           <input
             name="driveUrl"
             required
             placeholder="https://drive.google.com/file/d/.../view"
-            style={{ width: "100%", padding: "0.5rem" }}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
           />
         </label>
-        <button type="submit" style={{ padding: "0.75rem", fontWeight: "bold" }}>
+        <button
+          type="submit"
+          className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold"
+        >
           追加する
         </button>
       </form>
-    </main>
+    </div>
   );
 }

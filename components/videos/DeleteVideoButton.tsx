@@ -17,18 +17,7 @@ export function DeleteVideoButton({
       }}
     >
       <input type="hidden" name="id" value={id} />
-      <button
-        type="submit"
-        style={{
-          color: "#c00",
-          fontSize: "0.85rem",
-          border: "none",
-          background: "none",
-          cursor: "pointer",
-          padding: 0,
-          marginTop: "0.5rem",
-        }}
-      >
+      <button type="submit" className="text-xs text-red-600 hover:underline">
         削除
       </button>
     </form>
