@@ -202,7 +202,9 @@ export async function GET(request: Request) {
           .order("id", { ascending: true })
           .limit(BATCH_SIZE);
 
-        if (pendingError) throw pendingError;
+        if (pendingError) {
+          throw new Error(`Supabase error (pendingVideos): ${JSON.stringify(pendingError)}`);
+        }
         if (!pendingVideos || pendingVideos.length === 0) break;
 
         const { processed, performersAdded } = await syncVideoDetails(
@@ -263,7 +265,12 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error("YouTube Sync Error:", error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null
+          ? JSON.stringify(error)
+          : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
