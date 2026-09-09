@@ -78,10 +78,17 @@ async function syncVideoDetails(
     const description = snippet.description ?? "";
     const videoId = item.id;
 
+    // タイトル・説明文の中の半角/全角スペースを無視して比較するための正規化。
+    // 「町 真理子」（マスタ側）と「町真理子」（説明文側）のように、
+    // 同じ人物でもスペースの有無が食い違っていて一致しないケースがあるため。
+    const normalize = (s: string) => s.replace(/[\s　]/g, "");
+    const normalizedTitle = normalize(title);
+    const normalizedDescription = normalize(description);
+
     // 演目の判定
     let matchedWorkId: number | null = null;
     for (const work of works) {
-      if (title.includes(work.name)) {
+      if (normalizedTitle.includes(normalize(work.name))) {
         matchedWorkId = work.id;
         break;
       }
@@ -90,7 +97,8 @@ async function syncVideoDetails(
     // 劇場の判定
     let matchedTheaterId: string | null = null;
     for (const theater of theaters) {
-      if (title.includes(theater.name) || description.includes(theater.name)) {
+      const normalizedTheaterName = normalize(theater.name);
+      if (normalizedTitle.includes(normalizedTheaterName) || normalizedDescription.includes(normalizedTheaterName)) {
         matchedTheaterId = theater.id;
         break;
       }
@@ -121,7 +129,7 @@ async function syncVideoDetails(
     // 役者の自動抽出と紐付け
     if (savedVideo && description) {
       for (const performer of performers) {
-        if (description.includes(performer.name)) {
+        if (normalizedDescription.includes(normalize(performer.name))) {
           const { error: linkError } = await supabaseAdmin
             .from("yt_video_performers")
             .insert({
