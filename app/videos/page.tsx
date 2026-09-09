@@ -1,5 +1,8 @@
+import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { extractDriveFileId, driveEmbedUrl } from "@/lib/drive";
+import { DeleteVideoButton } from "@/components/videos/DeleteVideoButton";
+import { deleteVideo } from "./actions";
 
 export const revalidate = 0; // 常に最新の一覧を取得する
 
@@ -23,7 +26,29 @@ export default async function VideosPage() {
 
   return (
     <main style={{ maxWidth: 960, margin: "0 auto", padding: "2rem 1rem" }}>
-      <h1 style={{ fontSize: "1.5rem", marginBottom: "1.5rem" }}>動画一覧</h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <h1 style={{ fontSize: "1.5rem" }}>動画一覧</h1>
+        <Link
+          href="/videos/upload"
+          style={{
+            padding: "0.5rem 1rem",
+            background: "#111",
+            color: "#fff",
+            borderRadius: 8,
+            fontSize: "0.9rem",
+            textDecoration: "none",
+          }}
+        >
+          + 動画を追加
+        </Link>
+      </div>
 
       {videos?.length === 0 && <p>まだ動画がありません。</p>}
 
@@ -47,6 +72,7 @@ export default async function VideosPage() {
               ) : (
                 <p style={{ color: "red" }}>動画リンクを読み取れませんでした</p>
               )}
+              <DeleteVideoButton id={video.id} action={deleteVideo} />
             </div>
           );
         })}
