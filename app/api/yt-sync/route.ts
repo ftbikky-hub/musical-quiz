@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 // APIルートの強制動的レンダリング
 export const dynamic = 'force-dynamic';
 // Vercel Hobbyプランで許される最大の処理時間（秒）。
-// 過去動画の一括処理（backfillモード）はこの時間いっぱい使う。
+// 過去動画の一括処理（backfill / import-allモード）はこの時間いっぱい使う。
 export const maxDuration = 60;
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
@@ -12,12 +12,13 @@ const SHIKI_UPLOADS_PLAYLIST_ID = "UUdWRc7vSTDFSDL-ZT1ktQjA"; // UCをUUに変�
 
 // 1回のYouTube API呼び出し・DB処理で扱う動画数（YouTube APIの上限が50件のため）
 const BATCH_SIZE = 50;
-// backfillモードで、この時間(ミリ秒)を超えたら処理を打ち切り、続きは次回の呼び出しに回す。
+// backfill / import-allモードで、この時間(ミリ秒)を超えたら処理を打ち切り、続きは次回の呼び出しに回す。
 // Vercelの60秒制限に対して余裕を持たせてある。
 const TIME_BUDGET_MS = 45_000;
 
 interface PlaylistItemsResponse {
   items?: { snippet?: { resourceId?: { videoId?: string } } }[];
+  nextPageToken?: string;
 }
 
 interface VideoSnippet {
@@ -46,9 +47,62 @@ interface TheaterRow {
   name: string;
 }
 
+// タイトル・説明文の中の半角/全角スペースを無視して比較するための正規化。
+// 「町 真理子」（マスタ側）と「町真理子」（説明文側）のように、
+// 同じ人物・演目でもスペースの有無が食い違っていて一致しないケースがあるため。
+const normalize = (s: string) => s.replace(/[\s　]/g, "");
+
+/**
+ * 説明文の中の「○○役：氏名」「○○役：氏名Ａ、氏名Ｂ」のようなパターンから
+ * 役者名の候補を抜き出す（複数人が「、」「／」「/」「・」区切りで
+ * 並んでいる場合もすべて拾う）。
+ */
+function extractPerformerCandidates(text: string): string[] {
+  const candidates: string[] = [];
+  // 「役」の後にスペースを挟んで全角/半角コロンが来るパターンも許容する
+  const roleSegmentRegex = /役\s*[：:]\s*([^\s　（(\n]{1,40})/g;
+  let match: RegExpExecArray | null;
+  while ((match = roleSegmentRegex.exec(text)) !== null) {
+    const raw = match[1];
+    const names = raw
+      .split(/[、／/・]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    candidates.push(...names);
+  }
+  return candidates;
+}
+
+// 抽出した文字列が「人名らしいか」を簡易的に判定する。
+// 文章の続きを誤って拾ってしまうケース（助詞や「です」「ます」を含むなど）を弾く。
+function isPlausiblePersonName(name: string): boolean {
+  if (name.length < 2 || name.length > 12) return false;
+  if (!/^[ぁ-んァ-ヶー一-龠々]+$/.test(name)) return false;
+  const filler = ["から", "より", "です", "ます", "こちら", "ください", "という", "こと", "そして"];
+  if (filler.some((f) => name.includes(f))) return false;
+  return true;
+}
+
+/**
+ * タイトルから、まだマスタにない演目名の候補を推測する。
+ * 「劇団四季：『作品名』」または「劇団四季：作品名：...」の形式のみを対象とする、
+ * 控えめな抽出ルール。
+ */
+function extractWorkCandidate(title: string): string | null {
+  const bracketMatch = title.match(/『([^』]{2,20})』/);
+  if (bracketMatch) return bracketMatch[1];
+
+  const colonMatch = title.match(/^劇団四季：([^：『』]{2,20})：/);
+  if (colonMatch) return colonMatch[1];
+
+  return null;
+}
+
 /**
  * 指定したvideoIdの一覧について、YouTubeから詳細（説明文含む）を取得し、
  * yt_videosへ保存、説明文から役者を自動タグ付けする。
+ * マスタにまだない演目・役者は、タイトル／説明文から見つかり次第、自動で登録する。
+ * works・performersの配列は呼び出し側と共有されるため、新規追加分はその場で反映される。
  * 一度に処理するのは最大50件（YouTube APIの制約）。
  */
 async function syncVideoDetails(
@@ -78,10 +132,6 @@ async function syncVideoDetails(
     const description = snippet.description ?? "";
     const videoId = item.id;
 
-    // タイトル・説明文の中の半角/全角スペースを無視して比較するための正規化。
-    // 「町 真理子」（マスタ側）と「町真理子」（説明文側）のように、
-    // 同じ人物でもスペースの有無が食い違っていて一致しないケースがあるため。
-    const normalize = (s: string) => s.replace(/[\s　]/g, "");
     const normalizedTitle = normalize(title);
     const normalizedDescription = normalize(description);
 
@@ -91,6 +141,31 @@ async function syncVideoDetails(
       if (normalizedTitle.includes(normalize(work.name))) {
         matchedWorkId = work.id;
         break;
+      }
+    }
+
+    // 既存の演目と一致しなかった場合、タイトルから新しい演目名を推測して自動登録する
+    if (matchedWorkId === null) {
+      const candidateWork = extractWorkCandidate(title);
+      if (candidateWork) {
+        const normalizedCandidate = normalize(candidateWork);
+        const existing = works.find((w) => normalize(w.name) === normalizedCandidate);
+        if (existing) {
+          matchedWorkId = existing.id;
+        } else {
+          const { data: newWork, error: newWorkError } = await supabaseAdmin
+            .from("yt_works")
+            .insert({ name: candidateWork })
+            .select("id, name")
+            .single();
+
+          if (newWork) {
+            works.push(newWork);
+            matchedWorkId = newWork.id;
+          } else if (newWorkError && newWorkError.code !== "23505") {
+            console.error(`Error creating new work ${candidateWork}:`, newWorkError);
+          }
+        }
       }
     }
 
@@ -126,8 +201,31 @@ async function syncVideoDetails(
 
     processed++;
 
-    // 役者の自動抽出と紐付け
     if (savedVideo && description) {
+      // 説明文の中に、まだマスタにない役者名らしきものがあれば自動で登録する
+      const candidates = extractPerformerCandidates(description);
+      for (const candidateRaw of candidates) {
+        const candidate = candidateRaw.trim();
+        if (!isPlausiblePersonName(candidate)) continue;
+
+        const normalizedCandidate = normalize(candidate);
+        const alreadyKnown = performers.some((p) => normalize(p.name) === normalizedCandidate);
+        if (alreadyKnown) continue;
+
+        const { data: newPerformer, error: newPerformerError } = await supabaseAdmin
+          .from("yt_performers")
+          .insert({ name: candidate })
+          .select("id, name")
+          .single();
+
+        if (newPerformer) {
+          performers.push(newPerformer);
+        } else if (newPerformerError && newPerformerError.code !== "23505") {
+          console.error(`Error creating new performer ${candidate}:`, newPerformerError);
+        }
+      }
+
+      // 役者の自動抽出と紐付け（マスタは上で追加した分も含む）
       for (const performer of performers) {
         if (normalizedDescription.includes(normalize(performer.name))) {
           const { error: linkError } = await supabaseAdmin
@@ -242,6 +340,91 @@ export async function GET(request: Request) {
           (remaining ?? 0) > 0
             ? `今回 ${totalProcessed} 件処理しました。残り ${remaining} 件あります。同じURLをもう一度開いてください。`
             : `今回 ${totalProcessed} 件処理しました。すべての動画の説明文が埋まりました。`
+      });
+    }
+
+    if (mode === "import-all") {
+      // === チャンネルの全動画を取り込むモード（過去の900件以上をさかのぼって取得） ===
+      // YouTubeのアップロード一覧（プレイリスト）を最初から最後まで、
+      // ページ単位（最大50件ずつ）でたどりながら取り込む。
+      // 続きの位置は yt_sync_cursor テーブルに保存し、1回で終わらなければ
+      // 同じURLをもう一度開くことで続きから処理される。
+      const { data: cursorRow, error: cursorReadError } = await supabaseAdmin
+        .from("yt_sync_cursor")
+        .select("next_page_token, done")
+        .eq("id", 1)
+        .single();
+
+      if (cursorReadError) {
+        throw new Error(`Supabase error (yt_sync_cursor read): ${JSON.stringify(cursorReadError)}`);
+      }
+
+      const startedAt = Date.now();
+      let pageToken: string | null = cursorRow?.next_page_token ?? null;
+      let isDone = cursorRow?.done ?? false;
+      let totalProcessed = 0;
+      let totalPerformersAdded = 0;
+      let pagesProcessed = 0;
+
+      while (!isDone && Date.now() - startedAt < TIME_BUDGET_MS) {
+        const playlistUrl =
+          `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${BATCH_SIZE}` +
+          `&playlistId=${SHIKI_UPLOADS_PLAYLIST_ID}&key=${YOUTUBE_API_KEY}` +
+          (pageToken ? `&pageToken=${pageToken}` : "");
+
+        const playlistRes = await fetch(playlistUrl);
+        if (!playlistRes.ok) throw new Error("Failed to fetch playlist page");
+        const playlistData = (await playlistRes.json()) as PlaylistItemsResponse;
+
+        const videoIds = (playlistData.items ?? [])
+          .map((item) => item.snippet?.resourceId?.videoId)
+          .filter((id): id is string => Boolean(id));
+
+        if (videoIds.length > 0) {
+          const { processed, performersAdded } = await syncVideoDetails(
+            videoIds,
+            works,
+            performers,
+            theaters
+          );
+          totalProcessed += processed;
+          totalPerformersAdded += performersAdded;
+        }
+
+        pagesProcessed++;
+        pageToken = playlistData.nextPageToken ?? null;
+        if (!pageToken) {
+          isDone = true;
+        }
+      }
+
+      const { error: cursorWriteError } = await supabaseAdmin
+        .from("yt_sync_cursor")
+        .update({
+          next_page_token: pageToken,
+          done: isDone,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", 1);
+
+      if (cursorWriteError) {
+        console.error("Error saving yt_sync_cursor:", cursorWriteError);
+      }
+
+      const { count: totalVideos } = await supabaseAdmin
+        .from("yt_videos")
+        .select("id", { count: "exact", head: true });
+
+      return NextResponse.json({
+        mode: "import-all",
+        pagesProcessedThisRun: pagesProcessed,
+        processedThisRun: totalProcessed,
+        performersAddedThisRun: totalPerformersAdded,
+        done: isDone,
+        totalVideosInDatabase: totalVideos ?? 0,
+        message: isDone
+          ? `今回 ${totalProcessed} 件処理しました。チャンネルの全動画を取り込み終わりました（データベース内合計 ${totalVideos ?? 0} 件）。`
+          : `今回 ${totalProcessed} 件処理しました（${pagesProcessed}ページ分）。まだ続きがあります。同じURLをもう一度開いてください。`
       });
     }
 
