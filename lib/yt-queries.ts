@@ -159,3 +159,20 @@ export async function addPerformerToVideo(
 
   return performer;
 }
+
+/**
+ * 動画から役者のタグ付けを解除する（間違って登録したタグを削除するため）。
+ * 役者マスタ自体は削除しない。
+ */
+export async function removePerformerFromVideo(
+  videoId: number,
+  performerId: number
+): Promise<void> {
+  const { error } = await supabase
+    .from("yt_video_performers")
+    .delete()
+    .eq("video_id", videoId)
+    .eq("performer_id", performerId);
+
+  if (error) throw error;
+}
