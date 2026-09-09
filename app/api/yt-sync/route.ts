@@ -123,9 +123,21 @@ async function syncVideoDetails(
   if (!videosRes.ok) throw new Error("Failed to fetch video details");
   const videosData = (await videosRes.json()) as VideosListResponse;
 
-  let processed = 0;
-  let performersAdded = 0;
+  interface PreparedVideo {
+    videoId: string;
+    title: string;
+    description: string;
+    normalizedDescription: string;
+    publishedAt: string;
+    thumbnailUrl?: string;
+    workId: number | null;
+    theaterId: string | null;
+  }
 
+  const prepared: PreparedVideo[] = [];
+
+  // 1件ずつ演目・劇場・役者の判定（と、必要ならマスタへの新規登録）だけ先に済ませておく。
+  // データベースへの保存はあとでまとめて1回で行う（1件ずつ保存すると件数が多いときに時間切れになるため）。
   for (const item of videosData.items ?? []) {
     const snippet = item.snippet;
     const title = snippet.title;
@@ -179,30 +191,8 @@ async function syncVideoDetails(
       }
     }
 
-    // yt_videosにInsertまたはUpdate
-    const { data: savedVideo, error: videoError } = await supabaseAdmin
-      .from("yt_videos")
-      .upsert({
-        video_id: videoId,
-        title: title,
-        description: description,
-        published_at: snippet.publishedAt,
-        thumbnail_url: snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url,
-        work_id: matchedWorkId,
-        theater_id: matchedTheaterId
-      }, { onConflict: 'video_id' })
-      .select("id")
-      .single();
-
-    if (videoError) {
-      console.error(`Error saving video ${videoId}:`, videoError);
-      continue;
-    }
-
-    processed++;
-
-    if (savedVideo && description) {
-      // 説明文の中に、まだマスタにない役者名らしきものがあれば自動で登録する
+    // 説明文の中に、まだマスタにない役者名らしきものがあれば自動で登録する
+    if (description) {
       const candidates = extractPerformerCandidates(description);
       for (const candidateRaw of candidates) {
         const candidate = candidateRaw.trim();
@@ -224,30 +214,78 @@ async function syncVideoDetails(
           console.error(`Error creating new performer ${candidate}:`, newPerformerError);
         }
       }
+    }
 
-      // 役者の自動抽出と紐付け（マスタは上で追加した分も含む）
-      for (const performer of performers) {
-        if (normalizedDescription.includes(normalize(performer.name))) {
-          const { error: linkError } = await supabaseAdmin
-            .from("yt_video_performers")
-            .insert({
-              video_id: savedVideo.id,
-              performer_id: performer.id,
-              source: 'auto'
-            });
+    prepared.push({
+      videoId,
+      title,
+      description,
+      normalizedDescription,
+      publishedAt: snippet.publishedAt,
+      thumbnailUrl: snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url,
+      workId: matchedWorkId,
+      theaterId: matchedTheaterId
+    });
+  }
 
-          // 23505 は一意制約違反（すでに登録済み）。これは無視してよい
-          if (!linkError) {
-            performersAdded++;
-          } else if (linkError.code !== '23505') {
-            console.error(`Error linking performer ${performer.name} to video ${videoId}:`, linkError);
-          }
-        }
+  if (prepared.length === 0) {
+    return { processed: 0, performersAdded: 0 };
+  }
+
+  // 動画情報をまとめて1回で保存する
+  const { data: savedVideos, error: videosUpsertError } = await supabaseAdmin
+    .from("yt_videos")
+    .upsert(
+      prepared.map((v) => ({
+        video_id: v.videoId,
+        title: v.title,
+        description: v.description,
+        published_at: v.publishedAt,
+        thumbnail_url: v.thumbnailUrl,
+        work_id: v.workId,
+        theater_id: v.theaterId
+      })),
+      { onConflict: "video_id" }
+    )
+    .select("id, video_id");
+
+  if (videosUpsertError) {
+    throw new Error(`Supabase error (yt_videos upsert): ${JSON.stringify(videosUpsertError)}`);
+  }
+
+  const idByVideoId = new Map<string, number>();
+  for (const row of savedVideos ?? []) {
+    idByVideoId.set(row.video_id, row.id);
+  }
+
+  // 役者タグもまとめて1回で登録する（すでに登録済みのタグは自動的に無視される）
+  const tagRows: { video_id: number; performer_id: number; source: string }[] = [];
+  for (const v of prepared) {
+    if (!v.description) continue;
+    const savedId = idByVideoId.get(v.videoId);
+    if (!savedId) continue;
+    for (const performer of performers) {
+      if (v.normalizedDescription.includes(normalize(performer.name))) {
+        tagRows.push({ video_id: savedId, performer_id: performer.id, source: "auto" });
       }
     }
   }
 
-  return { processed, performersAdded };
+  let performersAdded = 0;
+  if (tagRows.length > 0) {
+    const { data: insertedTags, error: tagError } = await supabaseAdmin
+      .from("yt_video_performers")
+      .upsert(tagRows, { onConflict: "video_id,performer_id", ignoreDuplicates: true })
+      .select("video_id, performer_id");
+
+    if (tagError) {
+      console.error("Error linking performers:", tagError);
+    } else {
+      performersAdded = insertedTags?.length ?? 0;
+    }
+  }
+
+  return { processed: idByVideoId.size, performersAdded };
 }
 
 export async function GET(request: Request) {
