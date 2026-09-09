@@ -1,39 +1,35 @@
-# 動画ページ追加分(musical-quiz-main用に調整済み)
+# 動画ページ追加分(既存Supabaseプロジェクトに統合版)
 
-いただいたプロジェクト構成を確認し、既存ファイルと衝突しないように調整しました。
-このZIPは、プロジェクトのルート(`musical-quiz-main/`の中)に**そのまま展開して上書きして問題ありません**。
-既存ファイルは一切上書きしません(すべて新規ファイルです)。
+`videos`テーブルは、既存のミュージカルクイズ用Supabaseプロジェクト(NotreDameProject)に追加しました。
+新しい環境変数は不要です。既存の`NEXT_PUBLIC_SUPABASE_URL`・`NEXT_PUBLIC_SUPABASE_ANON_KEY`・`SUPABASE_SERVICE_ROLE_KEY`をそのまま使います。
 
-## 何が起きるか
+## 展開方法
 
-- `app/videos/page.tsx` — 新規(既存に`app/videos`なし)
+このZIPの中身を`musical-quiz-main/`直下に展開してください。既存ファイルは上書きしません(すべて新規ファイルです)。
+
+- `app/videos/page.tsx` — 新規
 - `app/videos/upload/page.tsx` — 新規
 - `app/videos/upload/actions.ts` — 新規
-- `lib/supabase/videos-client.ts` — 新規。既存の`lib/supabase/client.ts`(ミュージカルクイズ用DB)とは別ファイル・別名にしています
-- `lib/supabase/videos-admin.ts` — 新規。既存の`lib/supabase/admin.ts`とは別ファイル・別名にしています
 - `lib/drive.ts` — 新規
 
-`@supabase/supabase-js`は既にpackage.jsonに入っているので、追加インストールは不要です。
+`lib/supabase/client.ts`・`admin.ts`はそのまま使うので、今回は含めていません。
 
-## なぜファイル名・環境変数名を変えたか
+## 前回作った別プロジェクトについて
 
-既存の`lib/supabase/client.ts`と`admin.ts`は、`NEXT_PUBLIC_SUPABASE_URL`と`SUPABASE_SERVICE_ROLE_KEY`を使ってミュージカルクイズ用のSupabaseプロジェクトに繋いでいました。
-動画機能は別のSupabaseプロジェクト(personal-videos)なので、同じ名前を使うと既存の接続を壊してしまいます。そのため動画機能専用に以下の名前を使っています。
+前回作成した「personal-videos」というSupabaseプロジェクトは、今回作った`videos`テーブルを引っ越したので、もう使いません。
+Vercelにさっき登録した3つの環境変数(`NEXT_PUBLIC_VIDEOS_SUPABASE_URL`など)も不要になったので、削除してもらってOKです(残しておいても動作に影響はありません)。
 
-- `NEXT_PUBLIC_VIDEOS_SUPABASE_URL`
-- `NEXT_PUBLIC_VIDEOS_SUPABASE_ANON_KEY`
-- `VIDEOS_SUPABASE_SERVICE_ROLE_KEY`
+「personal-videos」プロジェクト自体の削除は、こちらのツールからはできない操作でした。もし消したい場合は、Supabaseダッシュボードの該当プロジェクト → Project Settings → General → 一番下の「Delete Project」から手動で削除してください。
 
 ## セットアップ手順
 
-1. このZIPの中身を`musical-quiz-main/`直下に展開する(上書きしてOK、衝突なし)
-2. `ENV_VARS_TO_ADD.txt`の中身を、既存の`.env.local`に**追記**する
-   - `VIDEOS_SUPABASE_SERVICE_ROLE_KEY`だけは、Supabaseダッシュボードの`personal-videos`プロジェクト → Project Settings → API Keys → service_role から自分でコピーして貼り付けてください
-3. 動画をGoogleドライブにアップロードし、共有設定を「リンクを知っている全員が閲覧可」に変更する
-4. `npm run dev`で起動し、`/videos/upload`からタイトル+ドライブの共有リンクを登録
-5. `/videos`で一覧・再生を確認
+1. ZIPの中身を`musical-quiz-main/`直下に展開する
+2. 動画をGoogleドライブにアップロードし、共有設定を「リンクを知っている全員が閲覧可」に変更する
+3. `npm run dev`で起動し、`/videos/upload`からタイトル+ドライブの共有リンクを登録
+4. `/videos`で一覧・再生を確認
+5. Vercelにデプロイする場合、環境変数は既存のものがそのまま使えるので追加登録は不要です
 
 ## 今後について
 
 - 鍵(パスワード保護)は未実装です
-- `/videos/upload`は現状誰でもアクセスできます。ナビゲーションへのリンク追加なども今回は行っていません(依頼範囲外のため)
+- `/videos/upload`は現状誰でもアクセスできます

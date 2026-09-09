@@ -1,4 +1,4 @@
-import { videosSupabase } from "@/lib/supabase/videos-client";
+import { supabase } from "@/lib/supabase/client";
 import { extractDriveFileId, driveEmbedUrl } from "@/lib/drive";
 
 export const revalidate = 0; // 常に最新の一覧を取得する
@@ -12,7 +12,7 @@ type Video = {
 };
 
 export default async function VideosPage() {
-  const { data: videos, error } = await videosSupabase
+  const { data: videos, error } = await supabase
     .from("videos")
     .select("*")
     .order("created_at", { ascending: false });

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { videosSupabaseAdmin } from "@/lib/supabase/videos-admin";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { extractDriveFileId } from "@/lib/drive";
 
 export async function addVideo(formData: FormData) {
@@ -18,13 +18,13 @@ export async function addVideo(formData: FormData) {
     throw new Error("Googleドライブの共有リンクを正しく読み取れませんでした");
   }
 
-  if (!videosSupabaseAdmin) {
+  if (!supabaseAdmin) {
     throw new Error(
-      "VIDEOS_SUPABASE_SERVICE_ROLE_KEY が未設定です。.env.local を確認してください。"
+      "SUPABASE_SERVICE_ROLE_KEY が未設定です。.env.local を確認してください。"
     );
   }
 
-  const { error } = await videosSupabaseAdmin.from("videos").insert({
+  const { error } = await supabaseAdmin.from("videos").insert({
     title,
     description: description || null,
     drive_url: driveUrl,
