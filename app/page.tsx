@@ -90,17 +90,17 @@ export default function Home() {
           </Link>
 
           <Link
-            href="/videos"
+            href="/media"
             className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
           >
             <div className="h-12 w-12 bg-green-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <span className="text-2xl">🎬</span>
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              動画
+              メディア
             </h2>
             <p className="text-gray-600 text-sm flex-grow">
-              自分の動画をまとめて置いておく場所です。
+              自分の動画・音楽・写真をまとめて置いておく場所です。
             </p>
             <div className="text-blue-600 font-medium text-sm mt-4">
               開く &rarr;
