@@ -10,6 +10,7 @@ export interface YtVideo {
   thumbnail_url: string | null;
   work_id: number | null;
   theater_id: string | null;
+  removed_at: string | null;
   yt_works: { name: string } | null;
   shiki_theaters: { name: string } | null;
   yt_video_performers: {
@@ -58,6 +59,7 @@ export async function fetchVideos(params: YtSearchParams): Promise<YtVideo[]> {
       thumbnail_url,
       work_id,
       theater_id,
+      removed_at,
       yt_works ( name ),
       shiki_theaters ( name ),
       yt_video_performers (

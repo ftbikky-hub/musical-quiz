@@ -386,14 +386,21 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
 
       {/* 動画リストエリア */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredVideos.map((video) => (
-          <div key={video.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        {filteredVideos.map((video) => {
+          const isRemoved = Boolean(video.removed_at);
+          return (
+          <div
+            key={video.id}
+            className={`rounded-xl shadow-sm border overflow-hidden flex flex-col ${
+              isRemoved ? "bg-gray-50 border-gray-200 opacity-60" : "bg-white border-gray-100"
+            }`}
+          >
             {/* サムネイル（公式サイトへのリンク） */}
             <a
               href={`https://www.youtube.com/watch?v=${video.video_id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block relative group aspect-video bg-gray-100"
+              className={`block relative group aspect-video bg-gray-100 ${isRemoved ? "grayscale" : ""}`}
             >
               {video.thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -407,11 +414,16 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
                   ▶
                 </div>
               </div>
+              {isRemoved && (
+                <div className="absolute top-2 left-2 bg-gray-700/90 text-white text-[10px] px-2 py-0.5 rounded-full">
+                  非公開・削除
+                </div>
+              )}
             </a>
 
             {/* 詳細情報 */}
             <div className="p-4 flex-1 flex flex-col">
-              <h3 className="font-semibold text-gray-800 text-sm line-clamp-2 mb-2">
+              <h3 className={`font-semibold text-sm line-clamp-2 mb-2 ${isRemoved ? "text-gray-500" : "text-gray-800"}`}>
                 <a href={`https://www.youtube.com/watch?v=${video.video_id}`} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 hover:underline">
                   {video.title}
                 </a>
@@ -419,6 +431,7 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
 
               <div className="text-xs text-gray-500 mb-3">
                 公開日: {new Date(video.published_at).toLocaleDateString('ja-JP')}
+                {isRemoved && <span className="ml-2 text-gray-400">（現在は非公開または削除されています）</span>}
               </div>
 
               {/* タグ表示（演目・劇場・役者）：クリックすると検索欄に反映されて絞り込まれる */}
@@ -504,7 +517,8 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {filteredVideos.length === 0 && (
           <div className="col-span-full py-12 text-center text-gray-500 bg-white rounded-xl border border-gray-100">

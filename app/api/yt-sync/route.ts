@@ -109,7 +109,8 @@ async function syncVideoDetails(
   videoIds: string[],
   works: WorkRow[],
   performers: PerformerRow[],
-  theaters: TheaterRow[]
+  theaters: TheaterRow[],
+  passStartedAt?: string
 ): Promise<{ processed: number; performersAdded: number }> {
   if (!supabaseAdmin) {
     throw new Error("supabaseAdmin is not initialized. Check SUPABASE_SERVICE_ROLE_KEY.");
@@ -232,7 +233,10 @@ async function syncVideoDetails(
     return { processed: 0, performersAdded: 0 };
   }
 
-  // 動画情報をまとめて1回で保存する
+  // 動画情報をまとめて1回で保存する。
+  // passStartedAt が渡されている場合（＝全件取り込みモード）は、
+  // 「今回の一巡で確認できた」印を付け、非公開・削除の印は解除しておく
+  // （その動画は今もYouTube上に存在することが確認できたため）。
   const { data: savedVideos, error: videosUpsertError } = await supabaseAdmin
     .from("yt_videos")
     .upsert(
@@ -243,7 +247,8 @@ async function syncVideoDetails(
         published_at: v.publishedAt,
         thumbnail_url: v.thumbnailUrl,
         work_id: v.workId,
-        theater_id: v.theaterId
+        theater_id: v.theaterId,
+        ...(passStartedAt ? { last_seen_pass_at: passStartedAt, removed_at: null } : {})
       })),
       { onConflict: "video_id" }
     )
@@ -382,14 +387,16 @@ export async function GET(request: Request) {
     }
 
     if (mode === "import-all") {
-      // === チャンネルの全動画を取り込むモード（過去の900件以上をさかのぼって取得） ===
+      // === チャンネルの全動画を取り込む（兼、非公開・削除された動画を検出する）モード ===
       // YouTubeのアップロード一覧（プレイリスト）を最初から最後まで、
       // ページ単位（最大50件ずつ）でたどりながら取り込む。
       // 続きの位置は yt_sync_cursor テーブルに保存し、1回で終わらなければ
       // 同じURLをもう一度開くことで続きから処理される。
+      // 前回の一巡がすでに完了している場合は、最初から巡り直して
+      // 「今回見つからなかった＝非公開・削除された」動画を検出する。
       const { data: cursorRow, error: cursorReadError } = await supabaseAdmin
         .from("yt_sync_cursor")
-        .select("next_page_token, done")
+        .select("next_page_token, done, pass_started_at")
         .eq("id", 1)
         .single();
 
@@ -397,9 +404,14 @@ export async function GET(request: Request) {
         throw new Error(`Supabase error (yt_sync_cursor read): ${JSON.stringify(cursorReadError)}`);
       }
 
+      const startingNewPass = !cursorRow || cursorRow.done || !cursorRow.pass_started_at;
+      const passStartedAt = startingNewPass
+        ? new Date().toISOString()
+        : (cursorRow.pass_started_at as string);
+
       const startedAt = Date.now();
-      let pageToken: string | null = cursorRow?.next_page_token ?? null;
-      let isDone = cursorRow?.done ?? false;
+      let pageToken: string | null = startingNewPass ? null : (cursorRow?.next_page_token ?? null);
+      let isDone = false;
       let totalProcessed = 0;
       let totalPerformersAdded = 0;
       let pagesProcessed = 0;
@@ -423,7 +435,8 @@ export async function GET(request: Request) {
             videoIds,
             works,
             performers,
-            theaters
+            theaters,
+            passStartedAt
           );
           totalProcessed += processed;
           totalPerformersAdded += performersAdded;
@@ -436,11 +449,29 @@ export async function GET(request: Request) {
         }
       }
 
+      let newlyRemovedCount = 0;
+      if (isDone) {
+        // 今回の一巡で確認できなかった（＝もうチャンネルの一覧に出てこない）動画に印を付ける
+        const { data: removedRows, error: removeError } = await supabaseAdmin
+          .from("yt_videos")
+          .update({ removed_at: new Date().toISOString() })
+          .is("removed_at", null)
+          .or(`last_seen_pass_at.is.null,last_seen_pass_at.neq.${passStartedAt}`)
+          .select("id");
+
+        if (removeError) {
+          console.error("Error marking removed videos:", removeError);
+        } else {
+          newlyRemovedCount = removedRows?.length ?? 0;
+        }
+      }
+
       const { error: cursorWriteError } = await supabaseAdmin
         .from("yt_sync_cursor")
         .update({
           next_page_token: pageToken,
           done: isDone,
+          pass_started_at: passStartedAt,
           updated_at: new Date().toISOString()
         })
         .eq("id", 1);
@@ -459,9 +490,10 @@ export async function GET(request: Request) {
         processedThisRun: totalProcessed,
         performersAddedThisRun: totalPerformersAdded,
         done: isDone,
+        newlyRemovedCount,
         totalVideosInDatabase: totalVideos ?? 0,
         message: isDone
-          ? `今回 ${totalProcessed} 件処理しました。チャンネルの全動画を取り込み終わりました（データベース内合計 ${totalVideos ?? 0} 件）。`
+          ? `今回 ${totalProcessed} 件処理しました。チャンネルの全動画を確認し終わりました（データベース内合計 ${totalVideos ?? 0} 件、今回新しく非公開/削除と判定: ${newlyRemovedCount} 件）。`
           : `今回 ${totalProcessed} 件処理しました（${pagesProcessed}ページ分）。まだ続きがあります。同じURLをもう一度開いてください。`
       });
     }
