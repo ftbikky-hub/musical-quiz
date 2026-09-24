@@ -71,7 +71,9 @@ export async function signup(
     email,
     password,
     email_confirm: true,
-    user_metadata: { username },
+    // nameはprofilesへの同期トリガー(handle_new_user)が拾うため、
+    // 元の大文字小文字を保ったユーザー名をここに入れておく。
+    user_metadata: { username, name: username },
   });
 
   if (createError) {

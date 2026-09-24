@@ -28,6 +28,12 @@ export default async function TheaterLogDetailPage({
   const item = await fetchTheaterLogById(id);
   if (!item) notFound();
 
+  const companionIds = item.companions.map((c) => c.user_id);
+  const { data: companionProfiles } =
+    companionIds.length > 0
+      ? await supabase.from("profiles").select("id, display_name").in("id", companionIds)
+      : { data: [] as { id: string; display_name: string }[] };
+
   return (
     <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -51,6 +57,15 @@ export default async function TheaterLogDetailPage({
             <p className="text-yellow-500">{"★".repeat(item.rating)}</p>
           )}
         </div>
+
+        {companionProfiles && companionProfiles.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">同行者</h3>
+            <p className="text-sm text-gray-600">
+              {companionProfiles.map((p) => p.display_name).join("、")}
+            </p>
+          </div>
+        )}
 
         {item.casts.length > 0 && (
           <div>

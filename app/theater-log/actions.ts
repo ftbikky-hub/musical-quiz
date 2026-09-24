@@ -4,8 +4,17 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase/client";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { trimField, normalizeActorName } from "@/lib/theater-log-format";
-import type { AutoCastCandidate, PerformanceSlot } from "@/lib/supabase/types";
+import type {
+  AutoCastCandidate,
+  AutoMatchCandidate,
+  PerformanceSlot,
+  Profile,
+  TheaterLog,
+  TheaterLogActorFrequency,
+  TwoUserComparison,
+} from "@/lib/supabase/types";
 
 const PHOTO_BUCKET = "theater-photos";
 const VALID_SLOTS: PerformanceSlot[] = ["matinee", "soiree", "other"];
@@ -17,6 +26,16 @@ function requireAdmin() {
     );
   }
   return supabaseAdmin;
+}
+
+/** ログイン中のユーザーIDを取得する。ミドルウェアで既にゲートされている前提。 */
+async function requireCurrentUserId(): Promise<string> {
+  const supabaseServer = await createClient();
+  const {
+    data: { user },
+  } = await supabaseServer.auth.getUser();
+  if (!user) throw new Error("ログインが必要です");
+  return user.id;
 }
 
 /**
@@ -105,13 +124,16 @@ function normalizeInput(input: TheaterLogInput) {
 export async function createTheaterLog(
   id: string,
   input: TheaterLogInput,
-  photos: NewPhotoInput[]
+  photos: NewPhotoInput[],
+  companionUserIds: string[] = []
 ) {
   const admin = requireAdmin();
+  const userId = await requireCurrentUserId();
   const normalized = normalizeInput(input);
 
   const { error: logError } = await admin.from("theater_logs").insert({
     id,
+    user_id: userId,
     watched_on: normalized.watched_on,
     performance_slot: normalized.performance_slot,
     work_title: normalized.work_title,
@@ -141,6 +163,16 @@ export async function createTheaterLog(
     if (photoError) throw new Error(`写真の保存に失敗しました: ${photoError.message}`);
   }
 
+  const companionIds = [...new Set(companionUserIds)].filter((c) => c !== userId);
+  if (companionIds.length > 0) {
+    const { error: companionError } = await admin
+      .from("theater_log_companions")
+      .insert(companionIds.map((companionUserId) => ({ log_id: id, user_id: companionUserId })));
+    if (companionError) {
+      throw new Error(`同行者の保存に失敗しました: ${companionError.message}`);
+    }
+  }
+
   await ensurePerformersRegistered(normalized.casts.map((c) => c.actor_name));
 
   revalidatePath("/theater-log");
@@ -151,9 +183,11 @@ export async function updateTheaterLog(
   id: string,
   input: TheaterLogInput,
   existingPhotos: ExistingPhotoInput[],
-  newPhotos: NewPhotoInput[]
+  newPhotos: NewPhotoInput[],
+  companionUserIds: string[] = []
 ) {
   const admin = requireAdmin();
+  const userId = await requireCurrentUserId();
   const normalized = normalizeInput(input);
 
   const { error: logError } = await admin
@@ -183,6 +217,23 @@ export async function updateTheaterLog(
       normalized.casts.map((c, i) => ({ ...c, log_id: id, sort_order: i }))
     );
     if (castError) throw new Error(`キャストの保存に失敗しました: ${castError.message}`);
+  }
+
+  const { error: deleteCompanionsError } = await admin
+    .from("theater_log_companions")
+    .delete()
+    .eq("log_id", id);
+  if (deleteCompanionsError) {
+    throw new Error(`同行者の更新に失敗しました: ${deleteCompanionsError.message}`);
+  }
+  const companionIds = [...new Set(companionUserIds)].filter((c) => c !== userId);
+  if (companionIds.length > 0) {
+    const { error: companionError } = await admin
+      .from("theater_log_companions")
+      .insert(companionIds.map((companionUserId) => ({ log_id: id, user_id: companionUserId })));
+    if (companionError) {
+      throw new Error(`同行者の保存に失敗しました: ${companionError.message}`);
+    }
   }
 
   let sortOrder = 0;
@@ -416,4 +467,126 @@ export async function searchTheaterCandidates(query: string): Promise<string[]> 
   });
 
   return [...results].slice(0, 20);
+}
+
+// ---------------------------------------------------------------------------
+// 実績(複数ユーザー)関連
+// ---------------------------------------------------------------------------
+
+/** 同行者選択などに使う、自分以外の登録ユーザー一覧。 */
+export async function listOtherProfiles(): Promise<Profile[]> {
+  const supabaseServer = await createClient();
+  const {
+    data: { user },
+  } = await supabaseServer.auth.getUser();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url")
+    .order("display_name");
+  if (error) throw error;
+
+  const profiles = (data ?? []) as Profile[];
+  return user ? profiles.filter((p) => p.id !== user.id) : profiles;
+}
+
+async function fetchParticipantLogs(userId: string): Promise<TheaterLog[]> {
+  const { data, error } = await supabase.rpc("theater_log_participant_logs", {
+    p_user_id: userId,
+  });
+  if (error) throw error;
+  return (data ?? []) as TheaterLog[];
+}
+
+async function fetchActorFrequency(userId: string): Promise<TheaterLogActorFrequency[]> {
+  const { data, error } = await supabase.rpc("theater_log_actor_frequency", {
+    p_user_id: userId,
+  });
+  if (error) throw error;
+  return (data ?? []) as TheaterLogActorFrequency[];
+}
+
+/** 個人タイムライン(記録者 or 同行者として当事者になっている記録を新しい順)。 */
+export async function fetchPersonalTimeline(userId: string): Promise<TheaterLog[]> {
+  return fetchParticipantLogs(userId);
+}
+
+function mostCommon(values: (string | null)[]): string | null {
+  const counts = new Map<string, number>();
+  for (const v of values) {
+    if (!v) continue;
+    counts.set(v, (counts.get(v) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [k, c] of counts) {
+    if (c > bestCount) {
+      best = k;
+      bestCount = c;
+    }
+  }
+  return best;
+}
+
+/**
+ * 2人のユーザーを比較する。両方が当事者(記録者 or 同行者)になっている記録の
+ * 一覧・片方だけの一覧・簡単な集計・推し被り・自動マッチ候補をまとめて返す。
+ */
+export async function compareTwoUsers(
+  userAId: string,
+  userBId: string
+): Promise<TwoUserComparison> {
+  const [logsA, logsB, actorsA, actorsB] = await Promise.all([
+    fetchParticipantLogs(userAId),
+    fetchParticipantLogs(userBId),
+    fetchActorFrequency(userAId),
+    fetchActorFrequency(userBId),
+  ]);
+
+  const idsB = new Set(logsB.map((l) => l.id));
+
+  const together = logsA.filter((l) => idsB.has(l.id));
+  const togetherIds = new Set(together.map((l) => l.id));
+  const onlyA = logsA.filter((l) => !togetherIds.has(l.id));
+  const onlyB = logsB.filter((l) => !togetherIds.has(l.id));
+
+  const autoMatches: AutoMatchCandidate[] = [];
+  for (const a of onlyA) {
+    for (const b of onlyB) {
+      if (a.watched_on === b.watched_on && a.work_title === b.work_title) {
+        autoMatches.push({
+          watched_on: a.watched_on,
+          work_title: a.work_title,
+          logIdA: a.id,
+          logIdB: b.id,
+        });
+      }
+    }
+  }
+
+  const actorMapB = new Map(actorsB.map((a) => [a.actor_name, a.watch_count]));
+  const commonActors = actorsA
+    .filter((a) => actorMapB.has(a.actor_name))
+    .map((a) => ({
+      actor_name: a.actor_name,
+      countA: a.watch_count,
+      countB: actorMapB.get(a.actor_name)!,
+    }))
+    .sort((x, y) => y.countA + y.countB - (x.countA + x.countB));
+
+  return {
+    together,
+    onlyA,
+    onlyB,
+    autoMatches,
+    summaryA: {
+      total: logsA.length,
+      topTheater: mostCommon(logsA.map((l) => l.theater)),
+    },
+    summaryB: {
+      total: logsB.length,
+      topTheater: mostCommon(logsB.map((l) => l.theater)),
+    },
+    commonActors,
+  };
 }

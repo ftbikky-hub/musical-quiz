@@ -144,6 +144,7 @@ export type PerformanceSlot = "matinee" | "soiree" | "other";
 
 export interface TheaterLog {
   id: string;
+  user_id: string;
   watched_on: string; // ISO date (YYYY-MM-DD)
   performance_slot: PerformanceSlot | null;
   work_title: string;
@@ -153,6 +154,17 @@ export interface TheaterLog {
   impression: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Profile {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+export interface TheaterLogCompanion {
+  log_id: string;
+  user_id: string;
 }
 
 export interface TheaterLogCast {
@@ -175,6 +187,7 @@ export interface TheaterLogPhoto {
 export interface TheaterLogWithRelations extends TheaterLog {
   casts: TheaterLogCast[];
   photos: TheaterLogPhoto[];
+  companions: TheaterLogCompanion[];
 }
 
 // 日付+作品からの自動キャスト取得(候補となる公演回1つぶん)。
@@ -202,4 +215,43 @@ export interface TheaterLogTheaterStat {
 export interface TheaterLogActorStat {
   actor_name: string;
   log_count: number;
+}
+
+// --- 実績(複数ユーザー)関連 ---------------------------------------------
+
+export interface TheaterLogUserRanking {
+  user_id: string;
+  display_name: string;
+  log_count: number;
+}
+
+export interface TheaterLogActorFrequency {
+  actor_name: string;
+  watch_count: number;
+}
+
+export interface TheaterLogRatingGap {
+  user_a_id: string;
+  user_a_name: string;
+  user_b_id: string;
+  user_b_name: string;
+  common_count: number;
+  avg_gap: number;
+}
+
+export interface AutoMatchCandidate {
+  watched_on: string;
+  work_title: string;
+  logIdA: string;
+  logIdB: string;
+}
+
+export interface TwoUserComparison {
+  together: TheaterLog[];
+  onlyA: TheaterLog[];
+  onlyB: TheaterLog[];
+  autoMatches: AutoMatchCandidate[];
+  summaryA: { total: number; topTheater: string | null };
+  summaryB: { total: number; topTheater: string | null };
+  commonActors: { actor_name: string; countA: number; countB: number }[];
 }

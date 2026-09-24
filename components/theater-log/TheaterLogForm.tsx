@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
 import {
   createTheaterLog,
   updateTheaterLog,
@@ -9,12 +9,14 @@ import {
   searchRoleCandidates,
   searchWorkCandidates,
   searchTheaterCandidates,
+  listOtherProfiles,
 } from "@/app/theater-log/actions";
 import { Autocomplete } from "./Autocomplete";
 import { PhotoUploader, type PhotoFormItem } from "./PhotoUploader";
 import type {
   AutoCastCandidate,
   PerformanceSlot,
+  Profile,
   TheaterLogWithRelations,
 } from "@/lib/supabase/types";
 
@@ -47,6 +49,19 @@ export function TheaterLogForm({
   );
 
   const [photos, setPhotos] = useState<PhotoFormItem[]>([]);
+
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [companionIds, setCompanionIds] = useState<string[]>(
+    () => (initialData?.companions ?? []).map((c) => c.user_id)
+  );
+  useEffect(() => {
+    listOtherProfiles().then(setProfiles).catch(() => setProfiles([]));
+  }, []);
+  function toggleCompanion(userId: string) {
+    setCompanionIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  }
 
   const [autoCandidates, setAutoCandidates] = useState<AutoCastCandidate[]>([]);
   const [autoDismissed, setAutoDismissed] = useState(false);
@@ -134,13 +149,13 @@ export function TheaterLogForm({
           const newPhotos = photos
             .filter((p) => !p.existingId)
             .map((p) => ({ storage_path: p.storagePath, caption: p.caption }));
-          await updateTheaterLog(id, input, existingPhotos, newPhotos);
+          await updateTheaterLog(id, input, existingPhotos, newPhotos, companionIds);
         } else {
           const newPhotos = photos.map((p) => ({
             storage_path: p.storagePath,
             caption: p.caption,
           }));
-          await createTheaterLog(id, input, newPhotos);
+          await createTheaterLog(id, input, newPhotos, companionIds);
         }
       } catch (err) {
         setError((err as Error).message);
@@ -264,6 +279,26 @@ export function TheaterLogForm({
             </button>
           ))}
         </div>
+      </div>
+
+      <div>
+        <span className="block text-sm font-medium text-gray-700 mb-2">同行者(任意)</span>
+        {profiles.length === 0 ? (
+          <p className="text-xs text-gray-400">他に登録ユーザーがいません</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {profiles.map((p) => (
+              <label key={p.id} className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={companionIds.includes(p.id)}
+                  onChange={() => toggleCompanion(p.id)}
+                />
+                {p.display_name}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

@@ -5,6 +5,9 @@ import type {
   TheaterLogWorkStat,
   TheaterLogTheaterStat,
   TheaterLogActorStat,
+  TheaterLogUserRanking,
+  TheaterLogRatingGap,
+  Profile,
 } from "./types";
 
 export type TheaterLogFilters = {
@@ -55,7 +58,9 @@ export async function fetchTheaterLogById(
 ): Promise<TheaterLogWithRelations | null> {
   const { data, error } = await supabase
     .from("theater_logs")
-    .select("*, casts:theater_log_casts(*), photos:theater_log_photos(*)")
+    .select(
+      "*, casts:theater_log_casts(*), photos:theater_log_photos(*), companions:theater_log_companions(*)"
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -100,4 +105,25 @@ export async function fetchStatsByActor(): Promise<TheaterLogActorStat[]> {
   const { data, error } = await supabase.rpc("theater_log_stats_by_actor");
   if (error) throw error;
   return (data ?? []) as TheaterLogActorStat[];
+}
+
+export async function fetchRankingByUser(): Promise<TheaterLogUserRanking[]> {
+  const { data, error } = await supabase.rpc("theater_log_ranking_by_user");
+  if (error) throw error;
+  return (data ?? []) as TheaterLogUserRanking[];
+}
+
+export async function fetchRatingGapRanking(): Promise<TheaterLogRatingGap[]> {
+  const { data, error } = await supabase.rpc("theater_log_rating_gap_ranking");
+  if (error) throw error;
+  return (data ?? []) as TheaterLogRatingGap[];
+}
+
+export async function fetchAllProfiles(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url")
+    .order("display_name");
+  if (error) throw error;
+  return (data ?? []) as Profile[];
 }
