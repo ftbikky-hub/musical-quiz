@@ -106,6 +106,24 @@ export default function Home() {
               開く &rarr;
             </div>
           </Link>
+
+          <Link
+            href="/theater-log"
+            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
+          >
+            <div className="h-12 w-12 bg-purple-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="text-2xl">📔</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              観劇記録
+            </h2>
+            <p className="text-gray-600 text-sm flex-grow">
+              自分が観た公演の記録を残して、検索したり集計したりできます。
+            </p>
+            <div className="text-blue-600 font-medium text-sm mt-4">
+              開く &rarr;
+            </div>
+          </Link>
         </div>
       </div>
     </div>

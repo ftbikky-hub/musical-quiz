@@ -135,3 +135,71 @@ export interface CastCoAppearanceRankingRow {
   performer_name: string;
   co_count: number;
 }
+
+// ---------------------------------------------------------------------------
+// 観劇記録(theater_log_* テーブル)
+// ---------------------------------------------------------------------------
+
+export type PerformanceSlot = "matinee" | "soiree" | "other";
+
+export interface TheaterLog {
+  id: string;
+  watched_on: string; // ISO date (YYYY-MM-DD)
+  performance_slot: PerformanceSlot | null;
+  work_title: string;
+  theater: string | null;
+  seat: string | null;
+  rating: number | null;
+  impression: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TheaterLogCast {
+  id: string;
+  log_id: string;
+  role_name: string | null;
+  actor_name: string;
+  sort_order: number;
+}
+
+export interface TheaterLogPhoto {
+  id: string;
+  log_id: string;
+  storage_path: string;
+  caption: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface TheaterLogWithRelations extends TheaterLog {
+  casts: TheaterLogCast[];
+  photos: TheaterLogPhoto[];
+}
+
+// 日付+作品からの自動キャスト取得(候補となる公演回1つぶん)。
+export interface AutoCastCandidate {
+  performanceId: number;
+  session: string | null;
+  casts: { role_name: string; actor_name: string }[];
+}
+
+export interface TheaterLogYearStat {
+  year: number;
+  log_count: number;
+}
+
+export interface TheaterLogWorkStat {
+  work_title: string;
+  log_count: number;
+}
+
+export interface TheaterLogTheaterStat {
+  theater: string;
+  log_count: number;
+}
+
+export interface TheaterLogActorStat {
+  actor_name: string;
+  log_count: number;
+}
