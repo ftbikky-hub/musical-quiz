@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { fetchTheaterLogs } from "@/lib/supabase/theater-log-queries";
 import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
+import { logout } from "@/app/auth/actions";
 
 export const revalidate = 0;
 
@@ -40,13 +42,31 @@ export default async function TheaterLogPage({
 
   const items = await fetchTheaterLogs({ from, to, work, theater, actor });
 
+  const supabaseServer = await createClient();
+  const {
+    data: { user },
+  } = await supabaseServer.auth.getUser();
+  const username = (user?.user_metadata?.username as string | undefined) ?? user?.email;
+
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">観劇記録</h1>
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
-          &larr; トップに戻る
-        </Link>
+        <div className="flex items-center gap-3">
+          {username && (
+            <>
+              <span className="text-xs text-gray-500">{username} でログイン中</span>
+              <form action={logout}>
+                <button type="submit" className="text-sm text-gray-500 hover:underline">
+                  ログアウト
+                </button>
+              </form>
+            </>
+          )}
+          <Link href="/" className="text-sm text-blue-600 hover:underline">
+            &larr; トップに戻る
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-3">
