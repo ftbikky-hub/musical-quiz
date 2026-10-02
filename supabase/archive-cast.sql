@@ -28,3 +28,15 @@ alter table public.archive_cast enable row level security;
 
 create index archive_cast_work_role_idx on public.archive_cast (work, role);
 create index archive_cast_actor_idx on public.archive_cast (actor);
+
+-- ----------------------------------------------------------------------------
+-- フェーズ2: ログインしたユーザー全員が読める select ポリシー。
+-- 書き込みポリシーは作らない(データ投入はダッシュボードから)。
+-- anon(ログアウト状態・公開キー)には select を付与せず、読めないままにする。
+-- ----------------------------------------------------------------------------
+
+grant select on public.archive_cast to authenticated;
+
+drop policy if exists "authenticated read archive_cast" on public.archive_cast;
+create policy "authenticated read archive_cast" on public.archive_cast
+  for select to authenticated using (true);

@@ -12,6 +12,7 @@ import {
   listOtherProfiles,
 } from "@/app/theater-log/actions";
 import { Autocomplete } from "./Autocomplete";
+import { CastPicker } from "./CastPicker";
 import { PhotoUploader, type PhotoFormItem } from "./PhotoUploader";
 import type {
   AutoCastCandidate,
@@ -94,6 +95,12 @@ export function TheaterLogForm({
     setCasts((prev) => [
       ...prev,
       { key: crypto.randomUUID(), role_name: "", actor_name: "" },
+    ]);
+  }
+  function addCastRowsFromPicker(rows: { role_name: string; actor_name: string }[]) {
+    setCasts((prev) => [
+      ...prev,
+      ...rows.map((r) => ({ key: crypto.randomUUID(), ...r })),
     ]);
   }
   function removeCastRow(key: string) {
@@ -302,14 +309,18 @@ export function TheaterLogForm({
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="block text-sm font-medium text-gray-700">キャスト</span>
+        <span className="block text-sm font-medium text-gray-700">キャスト</span>
+
+        <CastPicker workTitle={workTitle} onAddCasts={addCastRowsFromPicker} />
+
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-xs text-gray-500">追加済みのキャスト(直接編集・削除も可)</span>
           <button
             type="button"
             onClick={addCastRow}
             className="text-xs text-blue-600 hover:underline"
           >
-            + 行を追加
+            + 行を手動で追加
           </button>
         </div>
         <div className="space-y-2">
