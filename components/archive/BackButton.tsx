@@ -1,24 +1,11 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 /** 出演者・スタッフなど、どこからでも辿り着きうるページ用の「戻る」。
- * ブラウザ履歴を一つ戻し、履歴がなければ/archiveへ。 */
-export function BackButton({ fallbackHref = "/archive" }: { fallbackHref?: string }) {
-  const router = useRouter();
+ * 履歴を辿るのではなく、常に検索画面(/archive)へ戻る。 */
+export function BackButton({ href = "/archive" }: { href?: string }) {
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (window.history.length > 1) {
-          router.back();
-        } else {
-          router.push(fallbackHref);
-        }
-      }}
-      className="text-sm text-blue-600 hover:underline"
-    >
-      &larr; 戻る
-    </button>
+    <Link href={href} className="text-sm text-blue-600 hover:underline">
+      &larr; 検索に戻る
+    </Link>
   );
 }
