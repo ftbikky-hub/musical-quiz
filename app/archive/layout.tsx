@@ -10,7 +10,7 @@ export default async function ArchiveLayout({ children }: { children: React.Reac
   const username = (user?.user_metadata?.username as string | undefined) ?? user?.email;
 
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 min-w-0 w-full">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Link href="/archive" className="text-lg font-bold text-gray-900 hover:underline">
           劇団四季 公演アーカイブ
