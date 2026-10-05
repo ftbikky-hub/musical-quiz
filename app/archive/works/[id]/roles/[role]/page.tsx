@@ -13,7 +13,8 @@ export default async function ArchiveRoleDetailPage({
 }: {
   params: Promise<{ id: string; role: string }>;
 }) {
-  const { id, role } = await params;
+  const { id, role: rawRole } = await params;
+  const role = decodeURIComponent(rawRole);
   const workId = Number(id);
   if (!Number.isFinite(workId)) notFound();
 

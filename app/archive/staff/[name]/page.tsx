@@ -9,7 +9,8 @@ export default async function ArchiveStaffDetailPage({
 }: {
   params: Promise<{ name: string }>;
 }) {
-  const { name } = await params;
+  const { name: rawName } = await params;
+  const name = decodeURIComponent(rawName);
 
   const [summary, actorStat] = await Promise.all([
     fetchArchiveStaffSummaryByPerson(name),
