@@ -55,6 +55,7 @@ export function TheaterLogForm({
   const [companionIds, setCompanionIds] = useState<string[]>(
     () => (initialData?.companions ?? []).map((c) => c.user_id)
   );
+  const [showCompanions, setShowCompanions] = useState(() => companionIds.length > 0);
   useEffect(() => {
     listOtherProfiles().then(setProfiles).catch(() => setProfiles([]));
   }, []);
@@ -289,29 +290,44 @@ export function TheaterLogForm({
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700 mb-2">同行者(任意)</span>
-        {profiles.length === 0 ? (
-          <p className="text-xs text-gray-400">他に登録ユーザーがいません</p>
-        ) : (
-          <div className="flex flex-wrap gap-3">
-            {profiles.map((p) => (
-              <label key={p.id} className="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  checked={companionIds.includes(p.id)}
-                  onChange={() => toggleCompanion(p.id)}
-                />
-                {p.display_name}
-              </label>
-            ))}
-          </div>
-        )}
+        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={showCompanions}
+            onChange={(e) => {
+              setShowCompanions(e.target.checked);
+              if (!e.target.checked) setCompanionIds([]);
+            }}
+          />
+          同行者を記録する(任意)
+        </label>
+        {showCompanions &&
+          (profiles.length === 0 ? (
+            <p className="text-xs text-gray-400 mt-2">他に登録ユーザーがいません</p>
+          ) : (
+            <div className="flex flex-wrap gap-3 mt-2">
+              {profiles.map((p) => (
+                <label key={p.id} className="flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={companionIds.includes(p.id)}
+                    onChange={() => toggleCompanion(p.id)}
+                  />
+                  {p.display_name}
+                </label>
+              ))}
+            </div>
+          ))}
       </div>
 
       <div className="space-y-2">
         <span className="block text-sm font-medium text-gray-700">キャスト</span>
 
-        <CastPicker workTitle={workTitle} onAddCasts={addCastRowsFromPicker} />
+        <CastPicker
+          workTitle={workTitle}
+          addedCasts={casts}
+          onAddCasts={addCastRowsFromPicker}
+        />
 
         <div className="flex items-center justify-between pt-1">
           <span className="text-xs text-gray-500">追加済みのキャスト(直接編集・削除も可)</span>

@@ -13,9 +13,11 @@ type CastRowInput = { role_name: string; actor_name: string };
 
 export function CastPicker({
   workTitle,
+  addedCasts,
   onAddCasts,
 }: {
   workTitle: string;
+  addedCasts: CastRowInput[];
   onAddCasts: (rows: CastRowInput[]) => void;
 }) {
   const [roles, setRoles] = useState<ArchiveCastRoleOption[]>([]);
@@ -85,6 +87,13 @@ export function CastPicker({
   const candidateNames = new Set(candidates.map((c) => c.actor));
   const extraSearchResults = searchResults.filter((a) => !candidateNames.has(a));
 
+  const addedRoleCounts = new Map<string, number>();
+  const addedRoleActorKeys = new Set<string>();
+  for (const c of addedCasts) {
+    addedRoleCounts.set(c.role_name, (addedRoleCounts.get(c.role_name) ?? 0) + 1);
+    addedRoleActorKeys.add(`${c.role_name}\u0000${c.actor_name}`);
+  }
+
   if (!workTitle.trim()) {
     return (
       <p className="text-xs text-gray-400">
@@ -103,20 +112,27 @@ export function CastPicker({
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5 mb-1.5">
-            {roles.map((r) => (
-              <button
-                key={r.role}
-                type="button"
-                onClick={() => setSelectedRole(r.role)}
-                className={`px-2.5 py-1 rounded-full text-xs border ${
-                  selectedRole === r.role
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-200"
-                }`}
-              >
-                {r.role}
-              </button>
-            ))}
+            {roles.map((r) => {
+              const addedCount = addedRoleCounts.get(r.role) ?? 0;
+              return (
+                <button
+                  key={r.role}
+                  type="button"
+                  onClick={() => setSelectedRole(r.role)}
+                  className={`px-2.5 py-1 rounded-full text-xs border ${
+                    selectedRole === r.role
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : addedCount > 0
+                        ? "bg-gray-100 text-gray-400 border-gray-200"
+                        : "bg-white text-gray-700 border-gray-200"
+                  }`}
+                >
+                  {addedCount > 0 && "✓ "}
+                  {r.role}
+                  {addedCount > 0 && ` (${addedCount}名追加済み)`}
+                </button>
+              );
+            })}
           </div>
         )}
         <div className="flex gap-1.5">
@@ -152,33 +168,53 @@ export function CastPicker({
           )}
 
           <div className="flex flex-wrap gap-2">
-            {candidates.map((c) => (
-              <label
-                key={c.actor}
-                className="flex items-center gap-1 text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked.has(c.actor)}
-                  onChange={() => toggle(c.actor)}
-                />
-                {c.actor}
-                <span className="text-gray-400">({c.lastYear}年)</span>
-              </label>
-            ))}
-            {extraSearchResults.map((actor) => (
-              <label
-                key={actor}
-                className="flex items-center gap-1 text-xs bg-white border border-blue-200 rounded-full px-2.5 py-1"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked.has(actor)}
-                  onChange={() => toggle(actor)}
-                />
-                {actor}
-              </label>
-            ))}
+            {candidates.map((c) => {
+              const alreadyAdded =
+                !!selectedRole && addedRoleActorKeys.has(`${selectedRole}\u0000${c.actor}`);
+              return (
+                <label
+                  key={c.actor}
+                  className={`flex items-center gap-1 text-xs border rounded-full px-2.5 py-1 ${
+                    alreadyAdded
+                      ? "bg-gray-100 border-gray-200 text-gray-400"
+                      : "bg-white border-gray-200"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={alreadyAdded || checked.has(c.actor)}
+                    disabled={alreadyAdded}
+                    onChange={() => toggle(c.actor)}
+                  />
+                  {c.actor}
+                  <span className="text-gray-400">({c.lastYear}年)</span>
+                  {alreadyAdded && <span>追加済み</span>}
+                </label>
+              );
+            })}
+            {extraSearchResults.map((actor) => {
+              const alreadyAdded =
+                !!selectedRole && addedRoleActorKeys.has(`${selectedRole}\u0000${actor}`);
+              return (
+                <label
+                  key={actor}
+                  className={`flex items-center gap-1 text-xs border rounded-full px-2.5 py-1 ${
+                    alreadyAdded
+                      ? "bg-gray-100 border-gray-200 text-gray-400"
+                      : "bg-white border-blue-200"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={alreadyAdded || checked.has(actor)}
+                    disabled={alreadyAdded}
+                    onChange={() => toggle(actor)}
+                  />
+                  {actor}
+                  {alreadyAdded && <span>追加済み</span>}
+                </label>
+              );
+            })}
           </div>
 
           <div className="flex gap-1.5">
