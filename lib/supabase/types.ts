@@ -255,3 +255,119 @@ export interface TwoUserComparison {
   summaryB: { total: number; topTheater: string | null };
   commonActors: { actor_name: string; countA: number; countB: number }[];
 }
+
+// --- 公演アーカイブ(/archive)関連 -----------------------------------------
+
+export interface ArchiveRun {
+  perf_key: string;
+  year: number;
+  seq: number;
+  run_name: string;
+  work: string;
+  work_id: number | null;
+  theater: string | null;
+  venue_id: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  performances: number | null;
+  schedule_text: string | null;
+  notes: string | null;
+}
+
+export interface ArchiveCast {
+  id: number;
+  perf_key: string;
+  team: string | null;
+  role: string;
+  actor: string;
+  actor_alias: string | null;
+}
+
+export interface ArchiveStaff {
+  id: number;
+  perf_key: string;
+  section: string;
+  group_label: string | null;
+  job: string;
+  person: string;
+  note: string | null;
+}
+
+export interface ArchiveWorkStat {
+  work_id: number;
+  work_name: string;
+  run_count: number;
+  total_performances: number;
+  venue_count: number;
+  first_year: number;
+  last_year: number;
+  year_count: number;
+}
+
+export interface ArchiveVenueStat {
+  venue_id: number;
+  venue_name: string;
+  venue_type: string;
+  run_count: number;
+  total_performances: number;
+  first_year: number;
+  last_year: number;
+  work_count: number;
+}
+
+export interface ArchiveActorStat {
+  actor: string;
+  run_count: number;
+  work_count: number;
+  first_year: number;
+  last_year: number;
+}
+
+export interface ArchiveWorkYearVenueStat {
+  year: number;
+  venue_name: string;
+  performances: number;
+}
+
+export interface ArchiveWorkRoleStat {
+  role: string;
+  actor_count: number;
+  run_count: number;
+}
+
+export interface ArchiveWorkStaffSummary {
+  job: string;
+  person: string;
+  first_year: number;
+  last_year: number;
+  run_count: number;
+}
+
+export interface ArchiveRoleActorStat {
+  actor: string;
+  run_count: number;
+  first_year: number;
+  last_year: number;
+}
+
+export interface ArchiveActorRoleStat {
+  work_id: number;
+  work_name: string;
+  role: string;
+  run_count: number;
+  first_year: number;
+  last_year: number;
+}
+
+export interface ArchiveVenueWorkStat {
+  work_id: number;
+  work_name: string;
+  run_count: number;
+  total_performances: number;
+  first_year: number;
+  last_year: number;
+}
+
+export interface ArchiveRunWithRelations extends ArchiveRun {
+  venue_name: string | null;
+}

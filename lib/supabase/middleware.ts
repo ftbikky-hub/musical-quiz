@@ -4,13 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-const PROTECTED_PREFIX = "/theater-log";
+const PROTECTED_PREFIXES = ["/theater-log", "/archive"];
 const AUTH_PATHS = ["/login", "/signup"];
 
 /**
- * 観劇記録(/theater-log 以下)だけをログイン必須にする、見た目のゲート。
- * DB側のRLSは変更していないため、これはあくまでアプリ側の入り口を
- * 制限するものであり、Supabaseへの直接アクセスまでは防げない。
+ * 観劇記録(/theater-log)とアーカイブ閲覧(/archive)だけをログイン必須にする、
+ * 見た目のゲート。DB側のRLSは変更していないため、これはあくまでアプリ側の
+ * 入り口を制限するものであり、Supabaseへの直接アクセスまでは防げない。
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -35,7 +35,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isProtected = pathname.startsWith(PROTECTED_PREFIX);
+  const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isAuthPage = AUTH_PATHS.includes(pathname);
 
   if (!user && isProtected) {
@@ -48,7 +48,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
-    url.pathname = PROTECTED_PREFIX;
+    url.pathname = PROTECTED_PREFIXES[0];
     url.search = "";
     return NextResponse.redirect(url);
   }
