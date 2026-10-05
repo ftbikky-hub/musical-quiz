@@ -95,6 +95,7 @@ export function VenuesTable({ venues }: { venues: ArchiveVenueStat[] }) {
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       <p className="text-xs text-gray-400">{rows.length}件</p>
     </div>
   );

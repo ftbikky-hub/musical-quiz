@@ -25,3 +25,23 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/*
+ * 横スクロール領域(overflow-x-auto)は、OS/ブラウザによってはスクロールバーが
+ * 操作するまで見えず、「切れている」ように誤解されやすい。常時細く見える
+ * スクロールバーにして、横にまだ内容があることが分かるようにする。
+ */
+.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #9ca3af #f3f4f6;
+}
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: #9ca3af;
+  border-radius: 9999px;
+}

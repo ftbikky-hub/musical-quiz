@@ -70,6 +70,7 @@ export default async function ArchiveStaffDetailPage({
               </tbody>
             </table>
           </div>
+          <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
         </section>
       ))}
     </div>
