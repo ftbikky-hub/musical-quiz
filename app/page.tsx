@@ -124,6 +124,24 @@ export default function Home() {
               開く &rarr;
             </div>
           </Link>
+
+          <Link
+            href="/archive"
+            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
+          >
+            <div className="h-12 w-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <span className="text-2xl">📚</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              公演アーカイブ
+            </h2>
+            <p className="text-gray-600 text-sm flex-grow">
+              劇団四季公式アーカイブ由来のデータ。作品・出演者・役・スタッフ・会場・日付から1954年以降の公演を辿れます。
+            </p>
+            <div className="text-blue-600 font-medium text-sm mt-4">
+              開く &rarr;
+            </div>
+          </Link>
         </div>
       </div>
     </div>
