@@ -31,7 +31,7 @@ function SignupForm() {
             name="username"
             required
             autoComplete="username"
-            placeholder="半角英数字・3〜20文字"
+            placeholder="半角英数字・漢字・ひらがな・カタカナ、3〜20文字"
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
           />
         </label>
