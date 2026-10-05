@@ -52,7 +52,10 @@ export default async function ArchiveWorkDetailPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">{stat.work_name}</h1>
+        <Link href="/archive/works" className="text-sm text-blue-600 hover:underline">
+          &larr; 作品一覧に戻る
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900 mt-1">{stat.work_name}</h1>
         <p className="text-sm text-gray-500 mt-1">
           総公演回数 {stat.total_performances}回 ／ {stat.first_year}年〜{stat.last_year}年 ／ 会場数{" "}
           {stat.venue_count}
@@ -70,23 +73,22 @@ export default async function ArchiveWorkDetailPage({
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">年</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">会場</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">公演回数</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">年</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">会場</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">公演回数</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {yearVenue.map((row, i) => (
                 <tr key={i}>
-                  <td className="px-3 py-2 whitespace-nowrap">{row.year}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{row.venue_name}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{row.performances}</td>
+                  <td className="px-3 py-2">{row.year}</td>
+                  <td className="px-3 py-2">{row.venue_name}</td>
+                  <td className="px-3 py-2">{row.performances}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       </section>
 
       <section className="space-y-2">
@@ -117,15 +119,15 @@ export default async function ArchiveWorkDetailPage({
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">役名</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">演じた人数</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">公演期間数</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">役名</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">演じた人数</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">公演期間数</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {roles.map((r) => (
                 <tr key={r.role} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2">
                     <Link
                       href={`/archive/works/${workId}/roles/${encodeURIComponent(r.role)}`}
                       className="text-blue-600 hover:underline"
@@ -133,14 +135,13 @@ export default async function ArchiveWorkDetailPage({
                       {r.role}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{r.actor_count}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{r.run_count}</td>
+                  <td className="px-3 py-2">{r.actor_count}</td>
+                  <td className="px-3 py-2">{r.run_count}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       </section>
 
       <section className="space-y-3">

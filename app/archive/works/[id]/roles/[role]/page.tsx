@@ -29,12 +29,10 @@ export default async function ArchiveRoleDetailPage({
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-sm text-gray-500">
-          <Link href={`/archive/works/${workId}`} className="text-blue-600 hover:underline">
-            {stat.work_name}
-          </Link>
-        </p>
-        <h1 className="text-xl font-bold text-gray-900">役: {role}</h1>
+        <Link href={`/archive/works/${workId}`} className="text-sm text-blue-600 hover:underline">
+          &larr; {stat.work_name} に戻る
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900 mt-1">役: {role}</h1>
       </div>
 
       <section className="space-y-2">
@@ -43,21 +41,21 @@ export default async function ArchiveRoleDetailPage({
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">出演者</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">公演期間数</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">担当年</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">出演者</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">公演期間数</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">担当年</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {actorStats.map((a) => (
                 <tr key={a.actor} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2">
                     <Link href={`/archive/actors/${encodeURIComponent(a.actor)}`} className="text-blue-600 hover:underline">
                       {a.actor}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{a.run_count}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2">{a.run_count}</td>
+                  <td className="px-3 py-2">
                     {a.first_year === a.last_year ? a.first_year : `${a.first_year}〜${a.last_year}`}
                   </td>
                 </tr>
@@ -65,7 +63,6 @@ export default async function ArchiveRoleDetailPage({
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       </section>
 
       <section className="space-y-2">
@@ -74,32 +71,31 @@ export default async function ArchiveRoleDetailPage({
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">年</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">公演期間</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">会場</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">出演者</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">班</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">年</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">公演期間</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">会場</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">出演者</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">班</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {history.map((h, i) => (
                 <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap">{h.year}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{h.run_name}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{h.venue_name}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2">{h.year}</td>
+                  <td className="px-3 py-2">{h.run_name}</td>
+                  <td className="px-3 py-2">{h.venue_name}</td>
+                  <td className="px-3 py-2">
                     <Link href={`/archive/actors/${encodeURIComponent(h.actor)}`} className="text-blue-600 hover:underline">
                       {h.actor}
                     </Link>
                     {h.actor_alias && <span className="text-gray-400">（{h.actor_alias}）</span>}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{h.team ?? "—"}</td>
+                  <td className="px-3 py-2">{h.team ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       </section>
     </div>
   );

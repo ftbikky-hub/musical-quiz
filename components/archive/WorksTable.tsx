@@ -62,7 +62,7 @@ export function WorksTable({ works }: { works: ArchiveWorkStat[] }) {
                 <th
                   key={c.key}
                   onClick={() => toggleSort(c.key)}
-                  className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap cursor-pointer select-none"
+                  className="px-3 py-2 text-left font-medium text-gray-600 cursor-pointer select-none"
                 >
                   {c.label}
                   {sortKey === c.key && (desc ? " ▼" : " ▲")}
@@ -73,24 +73,23 @@ export function WorksTable({ works }: { works: ArchiveWorkStat[] }) {
           <tbody className="divide-y divide-gray-100">
             {rows.map((w) => (
               <tr key={w.work_id} className="hover:bg-gray-50">
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2">
                   <Link href={`/archive/works/${w.work_id}`} className="text-blue-600 hover:underline">
                     {w.work_name}
                   </Link>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">{w.total_performances}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2">{w.total_performances}</td>
+                <td className="px-3 py-2">
                   {w.first_year}〜{w.last_year}
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">{w.year_count}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{w.venue_count}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{w.run_count}</td>
+                <td className="px-3 py-2">{w.year_count}</td>
+                <td className="px-3 py-2">{w.venue_count}</td>
+                <td className="px-3 py-2">{w.run_count}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       <p className="text-xs text-gray-400">{rows.length}件</p>
     </div>
   );

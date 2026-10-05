@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchArchiveStaffSummaryByPerson, fetchArchiveActorStat } from "@/app/archive/queries";
+import { BackButton } from "@/components/archive/BackButton";
 
 export const revalidate = 0;
 
@@ -29,7 +30,8 @@ export default async function ArchiveStaffDetailPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">{name}</h1>
+        <BackButton />
+        <h1 className="text-xl font-bold text-gray-900 mt-1">{name}</h1>
         {actorStat && (
           <p className="text-sm text-gray-500 mt-1">
             同名の
@@ -48,29 +50,28 @@ export default async function ArchiveStaffDetailPage({
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">作品</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">年の範囲</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">公演期間数</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600">作品</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600">年の範囲</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600">公演期間数</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rows.map((r, i) => (
                   <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 whitespace-nowrap">
+                    <td className="px-3 py-2">
                       <Link href={`/archive/works/${r.work_id}`} className="text-blue-600 hover:underline">
                         {r.work_name}
                       </Link>
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
+                    <td className="px-3 py-2">
                       {r.first_year === r.last_year ? r.first_year : `${r.first_year}〜${r.last_year}`}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">{r.run_count}</td>
+                    <td className="px-3 py-2">{r.run_count}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
         </section>
       ))}
     </div>

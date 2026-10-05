@@ -74,22 +74,22 @@ export default async function ArchiveDatePage({
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">役</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">出演者</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">班</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">役</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">出演者</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">班</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {castsByRun[i].map((c, j) => (
                     <tr key={j}>
-                      <td className="px-3 py-2 whitespace-nowrap">{c.role}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-3 py-2">{c.role}</td>
+                      <td className="px-3 py-2">
                         <Link href={`/archive/actors/${encodeURIComponent(c.actor)}`} className="text-blue-600 hover:underline">
                           {c.actor}
                         </Link>
                         {c.actor_alias && <span className="text-gray-400">（{c.actor_alias}）</span>}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">{c.team ?? "—"}</td>
+                      <td className="px-3 py-2">{c.team ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>

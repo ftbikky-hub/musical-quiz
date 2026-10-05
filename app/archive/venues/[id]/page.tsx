@@ -28,7 +28,10 @@ export default async function ArchiveVenueDetailPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">{stat.venue_name}</h1>
+        <Link href="/archive/venues" className="text-sm text-blue-600 hover:underline">
+          &larr; 会場一覧に戻る
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900 mt-1">{stat.venue_name}</h1>
         <p className="text-sm text-gray-500 mt-1">
           {stat.venue_type} ／ 公演期間数 {stat.run_count} ／ 総公演回数 {stat.total_performances} ／{" "}
           {stat.first_year}年〜{stat.last_year}年 ／ 上演作品数 {stat.work_count}
@@ -41,23 +44,23 @@ export default async function ArchiveVenueDetailPage({
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">作品</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">公演期間数</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">総公演回数</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">年の範囲</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">作品</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">公演期間数</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">総公演回数</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">年の範囲</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {workStats.map((w) => (
                 <tr key={w.work_id} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2">
                     <Link href={`/archive/works/${w.work_id}`} className="text-blue-600 hover:underline">
                       {w.work_name}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{w.run_count}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{w.total_performances}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2">{w.run_count}</td>
+                  <td className="px-3 py-2">{w.total_performances}</td>
+                  <td className="px-3 py-2">
                     {w.first_year === w.last_year ? w.first_year : `${w.first_year}〜${w.last_year}`}
                   </td>
                 </tr>
@@ -65,7 +68,6 @@ export default async function ArchiveVenueDetailPage({
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       </section>
 
       <section className="space-y-2">
@@ -74,33 +76,32 @@ export default async function ArchiveVenueDetailPage({
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">年</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">作品</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">期間</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">公演回数</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">元の会場表記</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">年</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">作品</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">期間</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">公演回数</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600">元の会場表記</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {runs.map((r) => (
                 <tr key={r.perf_key} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap">{r.year}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2">{r.year}</td>
+                  <td className="px-3 py-2">
                     <Link href={`/archive/works/${r.work_id}`} className="text-blue-600 hover:underline">
                       {r.work_name}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2">
                     {r.start_date ?? "—"} 〜 {r.end_date ?? "—"}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{r.performances ?? "—"}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-gray-500">{r.theater ?? "—"}</td>
+                  <td className="px-3 py-2">{r.performances ?? "—"}</td>
+                  <td className="px-3 py-2 text-gray-500">{r.theater ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       </section>
     </div>
   );

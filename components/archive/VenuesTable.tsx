@@ -67,7 +67,7 @@ export function VenuesTable({ venues }: { venues: ArchiveVenueStat[] }) {
                 <th
                   key={c.key}
                   onClick={() => toggleSort(c.key)}
-                  className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap cursor-pointer select-none"
+                  className="px-3 py-2 text-left font-medium text-gray-600 cursor-pointer select-none"
                 >
                   {c.label}
                   {sortKey === c.key && (desc ? " ▼" : " ▲")}
@@ -78,24 +78,23 @@ export function VenuesTable({ venues }: { venues: ArchiveVenueStat[] }) {
           <tbody className="divide-y divide-gray-100">
             {rows.map((v) => (
               <tr key={v.venue_id} className="hover:bg-gray-50">
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2">
                   <Link href={`/archive/venues/${v.venue_id}`} className="text-blue-600 hover:underline">
                     {v.venue_name}
                   </Link>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">{v.venue_type}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{v.run_count}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{v.total_performances}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2">{v.venue_type}</td>
+                <td className="px-3 py-2">{v.run_count}</td>
+                <td className="px-3 py-2">{v.total_performances}</td>
+                <td className="px-3 py-2">
                   {v.first_year}〜{v.last_year}
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">{v.work_count}</td>
+                <td className="px-3 py-2">{v.work_count}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-400 mt-1">← 横にスクロールできます →</p>
       <p className="text-xs text-gray-400">{rows.length}件</p>
     </div>
   );
