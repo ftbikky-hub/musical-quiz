@@ -435,12 +435,12 @@ export async function searchWorkCandidates(query: string): Promise<string[]> {
 
   try {
     const supabaseServer = await createClient();
-    let archiveQuery = supabaseServer.from("archive_cast").select("work").limit(200);
+    let archiveQuery = supabaseServer.from("archive_runs").select("work").limit(200);
     if (q) archiveQuery = archiveQuery.ilike("work", `%${q}%`);
     const { data: archiveWorks } = await archiveQuery;
     (archiveWorks ?? []).forEach((w) => results.add(w.work));
   } catch {
-    // archive_castが未整備(権限未付与・データ無し)でも他の候補は出す
+    // archive_runsが未整備(権限未付与・データ無し)でも他の候補は出す
   }
 
   let worksQuery = supabase.from("shiki_works").select("title").order("sort_order");
