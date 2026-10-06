@@ -79,18 +79,15 @@ export async function fetchArchiveCastActors(
     .sort((a, b) => b.lastYear - a.lastYear || b.years - a.years);
 }
 
-/** 候補にいない場合の、全出演者からの名前部分一致検索。 */
-export async function searchArchiveCastActors(query: string): Promise<string[]> {
-  const q = trimField(query);
-  if (!q) return [];
-
+/**
+ * 候補にいない場合の、全出演者名(一度だけ取得してクライアント側で絞り込む)。
+ * ILIKE部分一致は日本語の短い検索語だと毎回全件スキャンになり遅いため、
+ * 名前の一覧を丸ごとキャッシュして使う方式にしている。
+ */
+export async function fetchAllArchiveCastActorNames(): Promise<string[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("archive_cast")
-    .select("actor")
-    .ilike("actor", `%${q}%`)
-    .limit(100);
+  const { data, error } = await supabase.from("archive_cast").select("actor");
   if (error) return [];
 
-  return [...new Set((data ?? []).map((r) => r.actor))].sort().slice(0, 20);
+  return [...new Set((data ?? []).map((r) => r.actor))].sort();
 }

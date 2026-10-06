@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   fetchArchiveCastRoles,
   fetchArchiveCastActors,
-  searchArchiveCastActors,
+  fetchAllArchiveCastActorNames,
   type ArchiveCastRoleOption,
   type ArchiveCastActorOption,
 } from "@/app/theater-log/archive-cast-actions";
@@ -28,8 +28,9 @@ export function CastPicker({
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [allActorNames, setAllActorNames] = useState<string[] | null>(null);
   const [manualActor, setManualActor] = useState("");
+  const loadStarted = useRef(false);
 
   // 作品が変わったら役の選択を、役の選択が変わったらチェック・検索状態をリセットする。
   // (レンダー中に前回値と比較して反映する。Reactの推奨パターン:
@@ -45,7 +46,6 @@ export function CastPicker({
     setPrevSelectedRole(selectedRole);
     setChecked(new Set());
     setSearchQuery("");
-    setSearchResults([]);
   }
 
   useEffect(() => {
@@ -56,12 +56,18 @@ export function CastPicker({
     fetchArchiveCastActors(workTitle, selectedRole ?? "").then(setCandidates);
   }, [workTitle, selectedRole]);
 
+  // 出演者名は一度だけ丸ごと取得してキャッシュし、以降はブラウザ内で絞り込む
+  // (ILIKE部分一致は日本語の短い検索語だと毎回全件スキャンになり遅いため)。
   useEffect(() => {
-    const timer = setTimeout(() => {
-      searchArchiveCastActors(searchQuery).then(setSearchResults);
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    if (loadStarted.current) return;
+    loadStarted.current = true;
+    fetchAllArchiveCastActorNames().then(setAllActorNames);
+  }, []);
+
+  const searchResults =
+    allActorNames && searchQuery.trim()
+      ? allActorNames.filter((a) => a.includes(searchQuery.trim())).slice(0, 20)
+      : [];
 
   function toggle(actor: string) {
     setChecked((prev) => {

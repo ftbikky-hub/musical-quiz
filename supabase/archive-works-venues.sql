@@ -250,3 +250,15 @@ revoke all on function public.archive_staff_summary_by_person(text) from public;
 revoke all on function public.archive_search_roles(text) from public;
 grant execute on function public.archive_staff_summary_by_person(text) to authenticated;
 grant execute on function public.archive_search_roles(text) to authenticated;
+
+-- 検索ボックスの高速化用: 役の(作品,役名)一覧をまとめて取得するビュー
+-- (ILIKE部分一致は日本語の短い検索語ではpg_trgmも効かず全件スキャンになる
+--  ため、候補を一度だけ全件取得してクライアント側で絞り込む方式に変更した)
+
+create or replace view public.archive_role_index with (security_invoker = true) as
+select distinct r.work_id, w.name as work_name, c.role
+from public.archive_cast c
+join public.archive_runs r on r.perf_key = c.perf_key
+join public.archive_works w on w.id = r.work_id;
+
+grant select on public.archive_role_index to authenticated;

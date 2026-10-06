@@ -2,9 +2,9 @@ import Link from "next/link";
 import { AutocompleteSearch } from "@/components/archive/AutocompleteSearch";
 import { DateJumpForm } from "@/components/archive/DateJumpForm";
 import {
-  searchArchiveActorOptions,
-  searchArchiveStaffOptions,
-  searchArchiveRoleOptions,
+  fetchAllArchiveActorOptions,
+  fetchAllArchiveStaffOptions,
+  fetchAllArchiveRoleOptions,
 } from "@/app/archive/queries";
 
 export const revalidate = 0;
@@ -51,7 +51,7 @@ export default function ArchivePage() {
           <AutocompleteSearch
             label="出演者名"
             placeholder="例: 市村"
-            searchAction={searchArchiveActorOptions}
+            fetchAllOptions={fetchAllArchiveActorOptions}
           />
         </EntryCard>
 
@@ -59,12 +59,16 @@ export default function ArchivePage() {
           <AutocompleteSearch
             label="スタッフ名"
             placeholder="例: 浅利"
-            searchAction={searchArchiveStaffOptions}
+            fetchAllOptions={fetchAllArchiveStaffOptions}
           />
         </EntryCard>
 
         <EntryCard title="役" description="役名の一部を入力すると候補が出ます(作品をまたいで検索)">
-          <AutocompleteSearch label="役名" placeholder="例: マリア" searchAction={searchArchiveRoleOptions} />
+          <AutocompleteSearch
+            label="役名"
+            placeholder="例: マリア"
+            fetchAllOptions={fetchAllArchiveRoleOptions}
+          />
         </EntryCard>
 
         <EntryCard title="日付から見る" description="指定した日に上演していた公演期間を表示">

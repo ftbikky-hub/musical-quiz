@@ -17,55 +17,54 @@ function trim(q: string) {
   return q.trim();
 }
 
-// --- トップページ: 候補検索 -------------------------------------------------
+// --- トップページ: 候補一覧(全件を一度だけ取得し、絞り込みはクライアント側で行う) ---
+// ILIKEによる部分一致検索は、日本語の短い検索語だとインデックス
+// (pg_trgm含む)がほぼ効かず毎回全件スキャンになってしまうため、
+// 候補を一度だけ丸ごと取得してブラウザ側でフィルタする方式にしている。
 
-export async function searchArchiveActorNames(query: string): Promise<string[]> {
-  const q = trim(query);
-  if (!q) return [];
+// searchText: 検索マッチに使うテキスト(labelだけでなく芸名・旧名も含める)。
+// 省略時はlabelがそのまま使われる。
+export type SearchOption = { label: string; href: string; searchText?: string };
+
+export async function fetchAllArchiveActorOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("archive_cast")
-    .select("actor, actor_alias")
-    .or(`actor.ilike.%${q}%,actor_alias.ilike.%${q}%`)
-    .limit(200);
+  const { data, error } = await supabase.from("archive_cast").select("actor, actor_alias");
   if (error || !data) return [];
-  const names = new Set<string>();
+  const aliasesByActor = new Map<string, Set<string>>();
   for (const row of data) {
-    if (row.actor && (row.actor.includes(q) || row.actor_alias?.includes(q))) {
-      names.add(row.actor);
-    } else if (row.actor) {
-      names.add(row.actor);
-    }
+    if (!row.actor) continue;
+    const set = aliasesByActor.get(row.actor) ?? new Set<string>();
+    if (row.actor_alias) set.add(row.actor_alias);
+    aliasesByActor.set(row.actor, set);
   }
-  return [...names].sort().slice(0, 20);
+  return [...aliasesByActor.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([actor, aliases]) => ({
+      label: actor,
+      href: `/archive/actors/${encodeURIComponent(actor)}`,
+      searchText: [actor, ...aliases].join(" "),
+    }));
 }
 
-export async function searchArchiveStaffNames(query: string): Promise<string[]> {
-  const q = trim(query);
-  if (!q) return [];
+export async function fetchAllArchiveStaffOptions(): Promise<SearchOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("archive_staff").select("person");
+  if (error || !data) return [];
+  return [...new Set(data.map((r) => r.person))]
+    .sort()
+    .map((n) => ({ label: n, href: `/archive/staff/${encodeURIComponent(n)}` }));
+}
+
+export async function fetchAllArchiveRoleOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("archive_staff")
-    .select("person")
-    .ilike("person", `%${q}%`)
-    .limit(200);
+    .from("archive_role_index")
+    .select("work_id, work_name, role");
   if (error || !data) return [];
-  return [...new Set(data.map((r) => r.person))].sort().slice(0, 20);
-}
-
-export async function searchArchiveRoles(query: string) {
-  const q = trim(query);
-  if (!q) return [];
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("archive_search_roles", { p_query: q });
-  if (error || !data) return [];
-  return data as {
-    work_id: number;
-    work_name: string;
-    role: string;
-    actor_count: number;
-    run_count: number;
-  }[];
+  return data.map((r) => ({
+    label: `${r.role}（${r.work_name}）`,
+    href: `/archive/works/${r.work_id}/roles/${encodeURIComponent(r.role)}`,
+  }));
 }
 
 export async function searchArchiveWorkNames(query: string): Promise<{ id: number; name: string }[]> {
@@ -76,26 +75,6 @@ export async function searchArchiveWorkNames(query: string): Promise<{ id: numbe
   const { data, error } = await req;
   if (error || !data) return [];
   return data;
-}
-
-export type SearchOption = { label: string; href: string };
-
-export async function searchArchiveActorOptions(query: string): Promise<SearchOption[]> {
-  const names = await searchArchiveActorNames(query);
-  return names.map((n) => ({ label: n, href: `/archive/actors/${encodeURIComponent(n)}` }));
-}
-
-export async function searchArchiveStaffOptions(query: string): Promise<SearchOption[]> {
-  const names = await searchArchiveStaffNames(query);
-  return names.map((n) => ({ label: n, href: `/archive/staff/${encodeURIComponent(n)}` }));
-}
-
-export async function searchArchiveRoleOptions(query: string): Promise<SearchOption[]> {
-  const rows = await searchArchiveRoles(query);
-  return rows.map((r) => ({
-    label: `${r.role}（${r.work_name}）`,
-    href: `/archive/works/${r.work_id}/roles/${encodeURIComponent(r.role)}`,
-  }));
 }
 
 // --- 作品一覧・詳細 ----------------------------------------------------------
