@@ -142,7 +142,7 @@ as $$
   join public.archive_runs r on r.perf_key = c.perf_key
   where r.work_id = p_work_id
   group by c.role
-  order by run_count desc;
+  order by min(c.id);
 $$;
 
 create or replace function public.archive_work_staff_summary(p_work_id bigint)
