@@ -292,3 +292,48 @@ join public.archive_works w on w.id = r.work_id
 left join public.archive_venues v on v.id = r.venue_id;
 
 grant select on public.archive_runs_effective to authenticated;
+
+-- fetchAllArchiveActorOptions等は.range()で1000行ずつページングしていたが、
+-- archive_castは約6.8万行あり68回の逐次リクエストになって却って遅くなった。
+-- PostgRESTの行数上限(1000行/リクエスト)は「返す行数」にかかる制限なので、
+-- 集計結果を1行のjsonb値にまとめて返せば上限を回避でき、リクエストも1回で済む。
+
+create or replace function public.archive_actor_options()
+returns jsonb
+language sql stable security invoker
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object('actor', actor, 'aliases', aliases) order by actor), '[]'::jsonb)
+  from (
+    select actor,
+           array_agg(distinct actor_alias) filter (where actor_alias is not null) as aliases
+    from public.archive_cast
+    where actor is not null
+    group by actor
+  ) t;
+$$;
+
+create or replace function public.archive_staff_options()
+returns jsonb
+language sql stable security invoker
+as $$
+  select coalesce(jsonb_agg(person order by person), '[]'::jsonb)
+  from (select distinct person from public.archive_staff where person is not null) t;
+$$;
+
+create or replace function public.archive_role_options()
+returns jsonb
+language sql stable security invoker
+as $$
+  select coalesce(
+    jsonb_agg(jsonb_build_object('work_id', work_id, 'work_name', work_name, 'role', role) order by work_name, role),
+    '[]'::jsonb
+  )
+  from public.archive_role_index;
+$$;
+
+revoke all on function public.archive_actor_options() from public;
+revoke all on function public.archive_staff_options() from public;
+revoke all on function public.archive_role_options() from public;
+grant execute on function public.archive_actor_options() to authenticated;
+grant execute on function public.archive_staff_options() to authenticated;
+grant execute on function public.archive_role_options() to authenticated;

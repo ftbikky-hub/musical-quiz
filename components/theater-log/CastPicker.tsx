@@ -227,7 +227,7 @@ export function CastPicker({
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="名前の一部で検索"
+              placeholder={allActorNames === null ? "候補を読み込み中…" : "名前の一部で検索"}
               className="flex-1 border border-gray-200 rounded-lg px-2 py-1 text-xs"
             />
             <button
@@ -239,6 +239,9 @@ export function CastPicker({
               選んだ人を追加
             </button>
           </div>
+          {searchQuery.trim() && allActorNames === null && (
+            <p className="text-xs text-gray-400">候補を読み込み中…</p>
+          )}
 
           <div className="flex gap-1.5">
             <input

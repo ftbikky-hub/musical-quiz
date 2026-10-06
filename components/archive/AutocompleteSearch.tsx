@@ -52,7 +52,12 @@ export function AutocompleteSearch({
         placeholder={allOptions === null ? "候補を読み込み中…" : placeholder}
         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
       />
-      {open && trimmed && options.length > 0 && (
+      {open && trimmed && allOptions === null && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-400">
+          候補を読み込み中…
+        </div>
+      )}
+      {open && trimmed && allOptions !== null && options.length > 0 && (
         <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
           {options.map((opt) => (
             <li key={opt.href}>

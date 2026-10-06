@@ -26,70 +26,42 @@ function trim(q: string) {
 // 省略時はlabelがそのまま使われる。
 export type SearchOption = { label: string; href: string; searchText?: string };
 
-// archive_cast(約6.8万行)・archive_staff(約4.3万行)・archive_role_index
-// (約4千行)はいずれもSupabaseのデフォルト上限(1リクエストあたり1000行)を
-// 超えるため、.range()で全件を取得し終えるまでページングする。
-const PAGE_SIZE = 1000;
+// .range()による1000行ずつのページングは、archive_cast(約6.8万行)だと
+// 68回の逐次リクエストになってしまい却って遅かったため、DB側で1行の
+// jsonbに集計して返すRPC(1回のリクエストで完結)に変更した。
+// PostgRESTの行数上限は「返す行数」にかかる制限なので、集計結果を
+// 1行にまとめれば上限を回避できる。
 
 export async function fetchAllArchiveActorOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
-  const aliasesByActor = new Map<string, Set<string>>();
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("archive_cast")
-      .select("actor, actor_alias")
-      .range(from, from + PAGE_SIZE - 1);
-    if (error || !data) break;
-    for (const row of data) {
-      if (!row.actor) continue;
-      const set = aliasesByActor.get(row.actor) ?? new Set<string>();
-      if (row.actor_alias) set.add(row.actor_alias);
-      aliasesByActor.set(row.actor, set);
-    }
-    if (data.length < PAGE_SIZE) break;
-  }
-  return [...aliasesByActor.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([actor, aliases]) => ({
+  const { data, error } = await supabase.rpc("archive_actor_options");
+  if (error || !data) return [];
+  const rows = data as { actor: string; aliases: string[] | null }[];
+  return rows
+    .map(({ actor, aliases }) => ({
       label: actor,
       href: `/archive/actors/${encodeURIComponent(actor)}`,
-      searchText: [actor, ...aliases].join(" "),
-    }));
+      searchText: [actor, ...(aliases ?? [])].join(" "),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export async function fetchAllArchiveStaffOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
-  const names = new Set<string>();
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("archive_staff")
-      .select("person")
-      .range(from, from + PAGE_SIZE - 1);
-    if (error || !data) break;
-    for (const row of data) names.add(row.person);
-    if (data.length < PAGE_SIZE) break;
-  }
-  return [...names].sort().map((n) => ({ label: n, href: `/archive/staff/${encodeURIComponent(n)}` }));
+  const { data, error } = await supabase.rpc("archive_staff_options");
+  if (error || !data) return [];
+  return (data as string[]).map((n) => ({ label: n, href: `/archive/staff/${encodeURIComponent(n)}` }));
 }
 
 export async function fetchAllArchiveRoleOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
-  const options: SearchOption[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("archive_role_index")
-      .select("work_id, work_name, role")
-      .range(from, from + PAGE_SIZE - 1);
-    if (error || !data) break;
-    for (const r of data) {
-      options.push({
-        label: `${r.role}（${r.work_name}）`,
-        href: `/archive/works/${r.work_id}/roles/${encodeURIComponent(r.role)}`,
-      });
-    }
-    if (data.length < PAGE_SIZE) break;
-  }
-  return options;
+  const { data, error } = await supabase.rpc("archive_role_options");
+  if (error || !data) return [];
+  const rows = data as { work_id: number; work_name: string; role: string }[];
+  return rows.map((r) => ({
+    label: `${r.role}（${r.work_name}）`,
+    href: `/archive/works/${r.work_id}/roles/${encodeURIComponent(r.role)}`,
+  }));
 }
 
 export async function searchArchiveWorkNames(query: string): Promise<{ id: number; name: string }[]> {
