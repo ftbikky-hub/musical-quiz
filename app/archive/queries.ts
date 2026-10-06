@@ -26,16 +26,27 @@ function trim(q: string) {
 // 省略時はlabelがそのまま使われる。
 export type SearchOption = { label: string; href: string; searchText?: string };
 
+// archive_cast(約6.8万行)・archive_staff(約4.3万行)・archive_role_index
+// (約4千行)はいずれもSupabaseのデフォルト上限(1リクエストあたり1000行)を
+// 超えるため、.range()で全件を取得し終えるまでページングする。
+const PAGE_SIZE = 1000;
+
 export async function fetchAllArchiveActorOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("archive_cast").select("actor, actor_alias");
-  if (error || !data) return [];
   const aliasesByActor = new Map<string, Set<string>>();
-  for (const row of data) {
-    if (!row.actor) continue;
-    const set = aliasesByActor.get(row.actor) ?? new Set<string>();
-    if (row.actor_alias) set.add(row.actor_alias);
-    aliasesByActor.set(row.actor, set);
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("archive_cast")
+      .select("actor, actor_alias")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error || !data) break;
+    for (const row of data) {
+      if (!row.actor) continue;
+      const set = aliasesByActor.get(row.actor) ?? new Set<string>();
+      if (row.actor_alias) set.add(row.actor_alias);
+      aliasesByActor.set(row.actor, set);
+    }
+    if (data.length < PAGE_SIZE) break;
   }
   return [...aliasesByActor.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -48,23 +59,37 @@ export async function fetchAllArchiveActorOptions(): Promise<SearchOption[]> {
 
 export async function fetchAllArchiveStaffOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("archive_staff").select("person");
-  if (error || !data) return [];
-  return [...new Set(data.map((r) => r.person))]
-    .sort()
-    .map((n) => ({ label: n, href: `/archive/staff/${encodeURIComponent(n)}` }));
+  const names = new Set<string>();
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("archive_staff")
+      .select("person")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error || !data) break;
+    for (const row of data) names.add(row.person);
+    if (data.length < PAGE_SIZE) break;
+  }
+  return [...names].sort().map((n) => ({ label: n, href: `/archive/staff/${encodeURIComponent(n)}` }));
 }
 
 export async function fetchAllArchiveRoleOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("archive_role_index")
-    .select("work_id, work_name, role");
-  if (error || !data) return [];
-  return data.map((r) => ({
-    label: `${r.role}（${r.work_name}）`,
-    href: `/archive/works/${r.work_id}/roles/${encodeURIComponent(r.role)}`,
-  }));
+  const options: SearchOption[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("archive_role_index")
+      .select("work_id, work_name, role")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error || !data) break;
+    for (const r of data) {
+      options.push({
+        label: `${r.role}（${r.work_name}）`,
+        href: `/archive/works/${r.work_id}/roles/${encodeURIComponent(r.role)}`,
+      });
+    }
+    if (data.length < PAGE_SIZE) break;
+  }
+  return options;
 }
 
 export async function searchArchiveWorkNames(query: string): Promise<{ id: number; name: string }[]> {
@@ -126,38 +151,17 @@ export type ArchiveWorkRunRow = {
 
 export async function fetchArchiveWorkRuns(workId: number): Promise<ArchiveWorkRunRow[]> {
   const supabase = await createClient();
+  // archive_runs_effective: 長期連続公演の「通算」start_date/end_dateを
+  // その年のカレンダー年にクランプした実効期間を返すビュー(詳しくはSQL側参照)。
   const { data, error } = await supabase
-    .from("archive_runs")
+    .from("archive_runs_effective")
     .select(
-      "perf_key, year, run_name, venue_id, start_date, end_date, performances, schedule_text, notes, archive_venues(name)"
+      "perf_key, year, run_name, venue_id, venue_name, start_date, end_date, performances, schedule_text, notes"
     )
     .eq("work_id", workId)
     .order("start_date", { ascending: true });
   if (error || !data) return [];
-  type Row = {
-    perf_key: string;
-    year: number;
-    run_name: string;
-    venue_id: number | null;
-    start_date: string | null;
-    end_date: string | null;
-    performances: number | null;
-    schedule_text: string | null;
-    notes: string | null;
-    archive_venues: { name: string } | null;
-  };
-  return (data as unknown as Row[]).map((r) => ({
-    perf_key: r.perf_key,
-    year: r.year,
-    run_name: r.run_name,
-    venue_id: r.venue_id,
-    venue_name: r.archive_venues?.name ?? null,
-    start_date: r.start_date,
-    end_date: r.end_date,
-    performances: r.performances,
-    schedule_text: r.schedule_text,
-    notes: r.notes,
-  }));
+  return data as ArchiveWorkRunRow[];
 }
 
 export async function fetchArchiveWorkRoleStats(workId: number): Promise<ArchiveWorkRoleStat[]> {
@@ -378,35 +382,12 @@ export type ArchiveVenueRunRow = {
 export async function fetchArchiveVenueRuns(venueId: number): Promise<ArchiveVenueRunRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("archive_runs")
-    .select(
-      "perf_key, year, work_id, run_name, theater, start_date, end_date, performances, archive_works(name)"
-    )
+    .from("archive_runs_effective")
+    .select("perf_key, year, work_id, work_name, run_name, theater, start_date, end_date, performances")
     .eq("venue_id", venueId)
     .order("year", { ascending: true });
   if (error || !data) return [];
-  type Row = {
-    perf_key: string;
-    year: number;
-    work_id: number;
-    run_name: string;
-    theater: string | null;
-    start_date: string | null;
-    end_date: string | null;
-    performances: number | null;
-    archive_works: { name: string } | null;
-  };
-  return (data as unknown as Row[]).map((r) => ({
-    perf_key: r.perf_key,
-    year: r.year,
-    work_id: r.work_id,
-    work_name: r.archive_works?.name ?? "",
-    run_name: r.run_name,
-    theater: r.theater,
-    start_date: r.start_date,
-    end_date: r.end_date,
-    performances: r.performances,
-  }));
+  return data as ArchiveVenueRunRow[];
 }
 
 // --- 日付から見る --------------------------------------------------------------
@@ -427,37 +408,15 @@ export type ArchiveRunOnDateRow = {
 export async function fetchArchiveRunsOnDate(date: string): Promise<ArchiveRunOnDateRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("archive_runs")
+    .from("archive_runs_effective")
     .select(
-      "perf_key, work_id, run_name, theater, start_date, end_date, performances, archive_works(name), archive_venues(name, venue_type)"
+      "perf_key, work_id, work_name, run_name, venue_name, venue_type, theater, start_date, end_date, performances"
     )
     .lte("start_date", date)
     .gte("end_date", date)
     .order("start_date", { ascending: true });
   if (error || !data) return [];
-  type Row = {
-    perf_key: string;
-    work_id: number;
-    run_name: string;
-    theater: string | null;
-    start_date: string | null;
-    end_date: string | null;
-    performances: number | null;
-    archive_works: { name: string } | null;
-    archive_venues: { name: string; venue_type: string } | null;
-  };
-  return (data as unknown as Row[]).map((r) => ({
-    perf_key: r.perf_key,
-    work_id: r.work_id,
-    work_name: r.archive_works?.name ?? "",
-    run_name: r.run_name,
-    venue_name: r.archive_venues?.name ?? null,
-    venue_type: r.archive_venues?.venue_type ?? null,
-    theater: r.theater,
-    start_date: r.start_date,
-    end_date: r.end_date,
-    performances: r.performances,
-  }));
+  return data as ArchiveRunOnDateRow[];
 }
 
 export type ArchiveRunCastRow = {

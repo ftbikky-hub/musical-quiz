@@ -262,3 +262,33 @@ join public.archive_runs r on r.perf_key = c.perf_key
 join public.archive_works w on w.id = r.work_id;
 
 grant select on public.archive_role_index to authenticated;
+
+-- 長期連続公演(例: ライオンキング1998-2017)は、年ごとのarchive_runs行に
+-- 「通算の」start_date/end_dateがそのまま入っており、年別の期間が
+-- 区別できない問題があった(日付検索で該当年以外の行も一致してしまう)。
+-- 元データに年別の正確な開始・終了日は無いため、year列を使って
+-- その年のカレンダー年(1/1〜12/31)にクランプした実効期間を計算する。
+-- (2012年以降の実際に年単位で区切られている行には影響しない)
+
+create or replace view public.archive_runs_effective
+with (security_invoker = true) as
+select
+  r.perf_key,
+  r.work_id,
+  w.name as work_name,
+  r.venue_id,
+  v.name as venue_name,
+  v.venue_type,
+  r.year,
+  r.run_name,
+  r.theater,
+  greatest(r.start_date, make_date(r.year, 1, 1)) as start_date,
+  least(r.end_date, make_date(r.year, 12, 31)) as end_date,
+  r.performances,
+  r.schedule_text,
+  r.notes
+from public.archive_runs r
+join public.archive_works w on w.id = r.work_id
+left join public.archive_venues v on v.id = r.venue_id;
+
+grant select on public.archive_runs_effective to authenticated;

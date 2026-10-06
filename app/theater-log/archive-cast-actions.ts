@@ -83,11 +83,21 @@ export async function fetchArchiveCastActors(
  * 候補にいない場合の、全出演者名(一度だけ取得してクライアント側で絞り込む)。
  * ILIKE部分一致は日本語の短い検索語だと毎回全件スキャンになり遅いため、
  * 名前の一覧を丸ごとキャッシュして使う方式にしている。
+ * archive_castは約6.8万行でSupabaseの1リクエストあたりの上限(1000行)を
+ * 超えるため、.range()で全件を取得し終えるまでページングする。
  */
 export async function fetchAllArchiveCastActorNames(): Promise<string[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("archive_cast").select("actor");
-  if (error) return [];
-
-  return [...new Set((data ?? []).map((r) => r.actor))].sort();
+  const PAGE_SIZE = 1000;
+  const names = new Set<string>();
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("archive_cast")
+      .select("actor")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error || !data) break;
+    for (const row of data) names.add(row.actor);
+    if (data.length < PAGE_SIZE) break;
+  }
+  return [...names].sort();
 }
