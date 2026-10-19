@@ -18,24 +18,6 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link
-            href="/schedule"
-            className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
-          >
-            <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <span className="text-2xl">🎭</span>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              劇団四季スケジュール（非公式）
-            </h2>
-            <p className="text-gray-600 text-sm flex-grow">
-              公演スケジュール（カード／タイムライン／マップ）とチケット発売予定を確認できます。
-            </p>
-            <div className="text-blue-600 font-medium text-sm mt-4">
-              開く &rarr;
-            </div>
-          </Link>
-
-          <Link
             href="/cast"
             className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md border border-gray-100 transition-all hover:-translate-y-1 h-[280px] flex flex-col"
           >

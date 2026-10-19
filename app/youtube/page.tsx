@@ -6,7 +6,7 @@ import Link from "next/link";
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: "公式YouTube動画一覧 | 劇団四季スケジュール確認アプリ",
+  title: "公式YouTube動画一覧 | 劇団四季ツール集（非公式）",
 };
 
 export default async function YoutubePage() {

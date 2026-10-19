@@ -1,5 +1,7 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+劇団四季スケジュール機能は削除しました。既存DBの削除SQL・参照調査・実行手順と未実施の状況は [supabase/README.md](supabase/README.md) を参照してください。
+
 ## Getting Started
 
 First, run the development server:

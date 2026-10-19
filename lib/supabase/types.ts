@@ -24,39 +24,6 @@ export interface Theater {
   created_at: string;
 }
 
-export interface Schedule {
-  id: string;
-  work_id: string;
-  theater_id: string;
-  start_date: string; // ISO date (YYYY-MM-DD)
-  end_date: string | null;
-  start_confirmed: boolean;
-  end_confirmed: boolean;
-  tour_city: string | null;
-  tour_pref: string | null;
-  note: string | null;
-  created_at: string;
-}
-
-export interface TicketRelease {
-  id: string;
-  schedule_id: string;
-  target_period: string;
-  presale_date: string | null;
-  general_date: string | null;
-  created_at: string;
-}
-
-// フロント側で使う、joinして組み立てた表示用の型。
-export interface ScheduleWithRelations extends Schedule {
-  work: Work;
-  theater: Theater;
-}
-
-export interface TicketReleaseWithRelations extends TicketRelease {
-  schedule: ScheduleWithRelations;
-}
-
 // ---------------------------------------------------------------------------
 // 過去キャスト一覧（cast_* テーブル）
 // 数字IDのテーブル。work_id / theater_id は既存の shiki_works / shiki_theaters
