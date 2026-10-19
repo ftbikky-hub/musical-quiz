@@ -35,7 +35,8 @@ export type SearchOption = { label: string; href: string; searchText?: string };
 export async function fetchAllArchiveActorOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("archive_actor_options");
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   const rows = data as { actor: string; aliases: string[] | null }[];
   return rows
     .map(({ actor, aliases }) => ({
@@ -49,14 +50,16 @@ export async function fetchAllArchiveActorOptions(): Promise<SearchOption[]> {
 export async function fetchAllArchiveStaffOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("archive_staff_options");
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return (data as string[]).map((n) => ({ label: n, href: `/archive/staff/${encodeURIComponent(n)}` }));
 }
 
 export async function fetchAllArchiveRoleOptions(): Promise<SearchOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("archive_role_options");
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   const rows = data as { work_id: number; work_name: string; role: string }[];
   return rows.map((r) => ({
     label: `${r.role}（${r.work_name}）`,
@@ -70,8 +73,19 @@ export async function searchArchiveWorkNames(query: string): Promise<{ id: numbe
   let req = supabase.from("archive_works").select("id, name").order("name").limit(500);
   if (q) req = req.ilike("name", `%${q}%`);
   const { data, error } = await req;
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data;
+}
+
+export async function fetchAllArchiveWorkOptions(): Promise<SearchOption[]> {
+  const works = await fetchArchiveWorkStats();
+  return works.map((work) => ({ label: work.work_name, href: `/archive/works/${work.work_id}` }));
+}
+
+export async function fetchAllArchiveVenueOptions(): Promise<SearchOption[]> {
+  const venues = await fetchArchiveVenueStats();
+  return venues.map((venue) => ({ label: venue.venue_name, href: `/archive/venues/${venue.venue_id}` }));
 }
 
 // --- 作品一覧・詳細 ----------------------------------------------------------
@@ -82,7 +96,8 @@ export async function fetchArchiveWorkStats(): Promise<ArchiveWorkStat[]> {
     .from("archive_work_stats")
     .select("*")
     .order("run_count", { ascending: false });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveWorkStat[];
 }
 
@@ -93,7 +108,8 @@ export async function fetchArchiveWorkStat(workId: number): Promise<ArchiveWorkS
     .select("*")
     .eq("work_id", workId)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return null;
   return data as ArchiveWorkStat;
 }
 
@@ -104,7 +120,8 @@ export async function fetchArchiveWorkYearVenueStats(
   const { data, error } = await supabase.rpc("archive_work_year_venue_stats", {
     p_work_id: workId,
   });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveWorkYearVenueStat[];
 }
 
@@ -132,14 +149,16 @@ export async function fetchArchiveWorkRuns(workId: number): Promise<ArchiveWorkR
     )
     .eq("work_id", workId)
     .order("start_date", { ascending: true });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveWorkRunRow[];
 }
 
 export async function fetchArchiveWorkRoleStats(workId: number): Promise<ArchiveWorkRoleStat[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("archive_work_role_stats", { p_work_id: workId });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveWorkRoleStat[];
 }
 
@@ -150,7 +169,8 @@ export async function fetchArchiveWorkStaffSummary(
   const { data, error } = await supabase.rpc("archive_work_staff_summary", {
     p_work_id: workId,
   });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveWorkStaffSummary[];
 }
 
@@ -165,7 +185,8 @@ export async function fetchArchiveRoleActorStats(
     p_work_id: workId,
     p_role: role,
   });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveRoleActorStat[];
 }
 
@@ -192,7 +213,8 @@ export async function fetchArchiveRoleCastHistory(
     .eq("role", role)
     .eq("archive_runs.work_id", workId)
     .order("archive_runs(year)", { ascending: true });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   type Row = {
     team: string | null;
     actor: string;
@@ -226,7 +248,8 @@ export async function fetchArchiveActorStat(actor: string): Promise<ArchiveActor
     .select("*")
     .eq("actor", actor)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return null;
   return data as ArchiveActorStat;
 }
 
@@ -250,7 +273,8 @@ export async function fetchArchiveActorHistory(actor: string): Promise<ArchiveAc
     )
     .eq("actor", actor)
     .order("archive_runs(year)", { ascending: false });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   type Row = {
     role: string;
     team: string | null;
@@ -280,7 +304,8 @@ export async function fetchArchiveActorHistory(actor: string): Promise<ArchiveAc
 export async function fetchArchiveActorRoleStats(actor: string): Promise<ArchiveActorRoleStat[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("archive_actor_role_stats", { p_actor: actor });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveActorRoleStat[];
 }
 
@@ -300,7 +325,8 @@ export async function fetchArchiveStaffSummaryByPerson(
   const { data, error } = await supabase.rpc("archive_staff_summary_by_person", {
     p_person: person,
   });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveStaffSummaryRow[];
 }
 
@@ -315,7 +341,8 @@ export async function fetchArchiveVenueStats(): Promise<ArchiveVenueStat[]> {
     .from("archive_venue_stats")
     .select("*")
     .order("run_count", { ascending: false });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveVenueStat[];
 }
 
@@ -326,7 +353,8 @@ export async function fetchArchiveVenueStat(venueId: number): Promise<ArchiveVen
     .select("*")
     .eq("venue_id", venueId)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return null;
   return data as ArchiveVenueStat;
 }
 
@@ -335,7 +363,8 @@ export async function fetchArchiveVenueWorkStats(venueId: number): Promise<Archi
   const { data, error } = await supabase.rpc("archive_venue_work_stats", {
     p_venue_id: venueId,
   });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveVenueWorkStat[];
 }
 
@@ -358,7 +387,8 @@ export async function fetchArchiveVenueRuns(venueId: number): Promise<ArchiveVen
     .select("perf_key, year, work_id, work_name, run_name, theater, start_date, end_date, performances")
     .eq("venue_id", venueId)
     .order("year", { ascending: true });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveVenueRunRow[];
 }
 
@@ -387,7 +417,8 @@ export async function fetchArchiveRunsOnDate(date: string): Promise<ArchiveRunOn
     .lte("start_date", date)
     .gte("end_date", date)
     .order("start_date", { ascending: true });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveRunOnDateRow[];
 }
 
@@ -405,6 +436,7 @@ export async function fetchArchiveRunCasts(perfKey: string): Promise<ArchiveRunC
     .select("role, team, actor, actor_alias")
     .eq("perf_key", perfKey)
     .order("id", { ascending: true });
-  if (error || !data) return [];
+  if (error) throw new Error(`公演アーカイブの読み取りに失敗しました (${error.code ?? "unknown"})`);
+  if (!data) return [];
   return data as ArchiveRunCastRow[];
 }

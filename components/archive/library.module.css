@@ -1,0 +1,55 @@
+.eyebrow { font: 9px Arial, sans-serif; letter-spacing: .2em; color: #89764e; }
+.searchDesk { padding: 30px 32px; border: 1px solid #d6cfba; background: #fffdf7; border-radius: 7px; position: relative; }
+.searchDesk::before { content: ""; position: absolute; top: -1px; left: 32px; width: 55px; height: 2px; background: #a58b51; }
+.deskHeading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 23px; }
+.deskHeading h2 { font: 21px var(--theatre-serif); margin: 0; color: #283f35; }
+.categories { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 24px; }
+.categories button { padding: 7px 20px; border: 1px solid #d8d3c3; border-radius: 3px; font-size: 12px; color: #63705a; background: transparent; cursor: pointer; }
+.categories button[aria-pressed="true"] { background: #294b3e; color: #fff9e9; border-color: #294b3e; }
+.searchField { min-width: 0; }
+.searchField label { display: block; font-size: 11px; color: #67715e; margin-bottom: 9px; }
+.inputRow { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #b7b49e; padding: 5px 0 11px; }
+.inputRow:focus-within { border-bottom-color: #345f47; box-shadow: 0 1px #345f47; }
+.inputRow svg { width: 20px; height: 20px; color: #8d7952; flex-shrink: 0; }
+.inputRow input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; padding: 5px 0; font: 18px var(--theatre-serif); color: #233731; }
+.inputRow input::placeholder { color: #919681; font-size: 15px; }
+.searchStatus { margin-top: 12px; font-size: 11px; color: #72785f; line-height: 1.9; }
+.searchStatus button { margin-left: 8px; text-decoration: underline; color: #345f47; cursor: pointer; }
+.searchResults { list-style: none; padding: 0; margin: 17px 0 0; max-height: 350px; overflow-y: auto; border-top: 1px solid #e3dece; }
+.searchResults li { border-bottom: 1px solid #e3dece; }
+.searchResults a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 8px; font-size: 14px; color: #304b39; text-decoration: none; overflow-wrap: anywhere; }
+.searchResults a:hover, .activeResult { background: #f0f1e7; }
+.searchResults a > span { color: #9b8357; }
+.shelfSection { margin-top: 42px; }
+.sectionHeading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+.sectionHeading h2 { font: 24px var(--theatre-serif); color: #283f35; margin: 6px 0 0; }
+.sectionHeading a { color: #627155; font-size: 12px; text-underline-offset: 4px; }
+.books { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.book { display: block; min-width: 0; color: inherit; text-decoration: none; }
+.cover { --book-color: #29443b; background: var(--book-color); color: #f4e9cd; min-height: 270px; position: relative; padding: 25px 24px 24px 28px; display: flex; flex-direction: column; align-items: center; text-align: center; box-shadow: inset 5px 0 0 #00000020, inset 7px 0 0 #ffffff14, 4px 5px 0 #e2ddce; border-radius: 2px 5px 5px 2px; transition: transform .2s, box-shadow .2s; }
+.book[data-tone="1"] .cover { --book-color: #614945; }
+.book[data-tone="2"] .cover { --book-color: #3b4f60; }
+.book[data-tone="3"] .cover { --book-color: #685e3f; }
+.cover::after { content: ""; position: absolute; inset: 13px 12px 13px 17px; border: 1px solid #d7bc7b70; border-radius: 65px 65px 0 0; pointer-events: none; }
+.bookNumber { font: 7px Arial, sans-serif; letter-spacing: .11em; margin-top: 12px; z-index: 1; }
+.coverOrnament { color: #c8ae78; font: 30px Georgia, serif; margin-top: 24px; }
+.cover h3 { font: 21px/1.7 var(--theatre-serif); color: #f4e9cd; margin: auto 0; padding: 12px 0; overflow-wrap: anywhere; position: relative; z-index: 1; }
+.coverYear { font: 11px Georgia, serif; letter-spacing: .13em; color: #d4c7a6; margin-top: 14px; }
+.book:hover .cover { transform: translateY(-5px); box-shadow: inset 5px 0 0 #00000020, inset 7px 0 0 #ffffff14, 5px 10px 0 #e2ddce; }
+.bookCaption { display: flex; justify-content: space-between; gap: 6px; margin: 16px 1px 3px; color: #737a65; font-size: 10px; }
+.bookCaption > span:last-child { color: #927b4d; }
+.directions { margin-top: 38px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; border-top: 1px solid #d9d2bd; padding-top: 25px; }
+.direction h2 { font: 19px var(--theatre-serif); margin: 0 0 10px; }
+.direction p { font-size: 11px; line-height: 1.9; color: #76806b; margin-bottom: 15px; }
+.direction > a { color: #345f47; font-size: 12px; text-decoration: underline; text-underline-offset: 4px; }
+.shelfToolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; }
+.shelfToolbar input, .shelfToolbar select { background: #fffdf7; border: 1px solid #cdc8b5; border-radius: 4px; padding: 10px 12px; font-size: 13px; min-width: 0; max-width: 100%; }
+.shelfToolbar input { flex: 1; min-width: 150px; }
+.viewToggle { display: flex; gap: 2px; }
+.viewToggle button { padding: 9px 13px; border: 1px solid #c8c4b1; font-size: 12px; color: #5c6b54; cursor: pointer; }
+.viewToggle button[aria-pressed="true"] { background: #294b3e; border-color: #294b3e; color: #fff9e9; }
+.resultCount { font-size: 11px; color: #737a65; margin-bottom: 20px; }
+.notice { padding: 28px; color: #65735c; font-size: 12px; line-height: 2; border: 1px dashed #c7c1ac; border-radius: 5px; }
+@media (max-width: 760px) { .books { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px 18px; } .cover { min-height: 270px; } }
+@media (max-width: 480px) { .searchDesk { padding: 24px 19px; } .deskHeading { gap: 13px; } .deskHeading h2 { font-size: 20px; } .categories { gap: 5px; margin-bottom: 20px; } .categories button { padding: 7px 11px; font-size: 11px; } .books { gap: 23px 14px; } .cover { min-height: 235px; padding: 23px 18px 22px 22px; } .cover h3 { font-size: 17px; } .bookNumber { font-size: 5px; } .coverOrnament { margin-top: 18px; font-size: 24px; } .coverYear { font-size: 9px; } .bookCaption { font-size: 9px; } .directions { grid-template-columns: 1fr; } .direction + .direction { border-top: 1px solid #ddd6c2; padding-top: 23px; } .sectionHeading h2 { font-size: 22px; } }
+@media (prefers-reduced-motion: reduce) { .book .cover { transition: none; } }

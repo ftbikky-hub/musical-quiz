@@ -49,7 +49,7 @@ export default async function ArchiveDatePage({
         </div>
       </div>
 
-      <DateJumpForm initial={d} />
+      <DateJumpForm key={d} initial={d} />
 
       {runs.length === 0 && <p className="text-sm text-gray-500">この日に上演していた公演はありません。</p>}
 

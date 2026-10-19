@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 export function DateJumpForm({ initial }: { initial?: string }) {
+  const id = useId();
   const router = useRouter();
   const [date, setDate] = useState(initial ?? "");
 
@@ -15,11 +16,13 @@ export function DateJumpForm({ initial }: { initial?: string }) {
         if (date) router.push(`/archive/date?d=${date}`);
       }}
     >
+      <label htmlFor={id} className="sr-only">公演を探す日付</label>
       <input
+        id={id}
         type="date"
         value={date}
         onChange={(e) => setDate(e.target.value)}
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        className="min-w-0 max-w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
         required
       />
       <button type="submit" className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm shrink-0">

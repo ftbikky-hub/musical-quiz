@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { matchesArchiveSearch } from "@/lib/archive-search";
+import { WorkBooks } from "./WorkBooks";
+import styles from "./library.module.css";
 import type { ArchiveWorkStat } from "@/lib/supabase/types";
 
 type SortKey = keyof Pick<
@@ -19,13 +22,14 @@ const COLUMNS: { key: SortKey; label: string }[] = [
 ];
 
 export function WorksTable({ works }: { works: ArchiveWorkStat[] }) {
+  const [view, setView] = useState<"shelf" | "table">("shelf");
   const [filter, setFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("total_performances");
   const [desc, setDesc] = useState(true);
 
   const rows = useMemo(() => {
     const filtered = filter.trim()
-      ? works.filter((w) => w.work_name.includes(filter.trim()))
+      ? works.filter((w) => matchesArchiveSearch(w.work_name, filter))
       : works;
     const sorted = [...filtered].sort((a, b) => {
       const av = a[sortKey];
@@ -47,25 +51,40 @@ export function WorksTable({ works }: { works: ArchiveWorkStat[] }) {
 
   return (
     <div className="space-y-3">
+      <div className={styles.shelfToolbar}>
       <input
-        type="text"
+        aria-label="作品名で絞り込み"
+        type="search"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         placeholder="作品名で絞り込み"
         className="w-full sm:w-80 border border-gray-300 rounded-lg px-3 py-2 text-sm"
       />
-      <div className="overflow-x-auto border border-gray-200 rounded-xl">
+      <select aria-label="作品の並べ方" value={`${sortKey}:${desc ? "desc" : "asc"}`} onChange={(event) => {
+        const [key, direction] = event.target.value.split(":");
+        setSortKey(key as SortKey); setDesc(direction === "desc");
+      }}>
+        {COLUMNS.flatMap((column) => [<option key={`${column.key}:desc`} value={`${column.key}:desc`}>{column.label}：降順</option>, <option key={`${column.key}:asc`} value={`${column.key}:asc`}>{column.label}：昇順</option>])}
+      </select>
+      <div className={styles.viewToggle} role="group" aria-label="作品の表示形式">
+        <button type="button" aria-pressed={view === "shelf"} onClick={() => setView("shelf")}>本棚</button>
+        <button type="button" aria-pressed={view === "table"} onClick={() => setView("table")}>一覧表</button>
+      </div>
+      </div>
+      <p className={styles.resultCount} role="status">{rows.length}作品{filter.trim() ? ` ／「${filter.trim()}」の検索結果` : "の公演記録"}</p>
+      {rows.length === 0 && <p className={styles.notice}>該当する作品が見つかりません。別の言葉で探してみてください。</p>}
+      {view === "shelf" ? <WorkBooks works={rows}/> : <div className="overflow-x-auto border border-gray-200 rounded-xl">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
               {COLUMNS.map((c) => (
                 <th
                   key={c.key}
-                  onClick={() => toggleSort(c.key)}
+                  aria-sort={sortKey === c.key ? (desc ? "descending" : "ascending") : undefined}
                   className="px-3 py-2 text-left font-medium text-gray-600 cursor-pointer select-none"
                 >
-                  {c.label}
-                  {sortKey === c.key && (desc ? " ▼" : " ▲")}
+                  <button type="button" className="w-full text-left" onClick={() => toggleSort(c.key)}>{c.label}
+                  {sortKey === c.key && (desc ? " ▼" : " ▲")}</button>
                 </th>
               ))}
             </tr>
@@ -89,8 +108,7 @@ export function WorksTable({ works }: { works: ArchiveWorkStat[] }) {
             ))}
           </tbody>
         </table>
-      </div>
-      <p className="text-xs text-gray-400">{rows.length}件</p>
+      </div>}
     </div>
   );
 }
