@@ -10,6 +10,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// ブラウザ用の単一クライアント。読み取り専用の公開データしか扱わないため、
-// シンプルに supabase-js を直接使う（@supabase/ssr のセッション管理は今回は不要）。
+// ブラウザ・サーバーの公開データ用クライアント。
+// 観劇記録の名前選択は journal-members.ts のCookieで扱う。
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

@@ -3,7 +3,7 @@ import { PageHeading } from "@/components/theatre/PageHeading";
 import { EmptyState } from "@/components/theatre/EmptyState";
 import { fetchTheaterLogs } from "@/lib/supabase/theater-log-queries";
 import { supabase } from "@/lib/supabase/client";
-import { createClient } from "@/lib/supabase/server";
+import { requireJournalMember } from "@/lib/journal-members";
 import { logout } from "@/app/auth/actions";
 
 export const revalidate = 0;
@@ -42,20 +42,16 @@ export default async function TheaterLogPage({
 }) {
   const { from, to, work, theater, actor } = await searchParams;
 
+  const member = await requireJournalMember();
   const items = await fetchTheaterLogs({ from, to, work, theater, actor });
-
-  const supabaseServer = await createClient();
-  const {
-    data: { user },
-  } = await supabaseServer.auth.getUser();
-  const username = (user?.user_metadata?.username as string | undefined) ?? user?.email;
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
-      <PageHeading section="journal" title="私の観劇手帳" actions={username && (
+      <PageHeading section="journal" title="私の観劇手帳" actions={member.display_name && (
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-xs text-gray-500">{username}</span>
-          <form action={logout}><button type="submit" className="text-sm text-gray-500 hover:underline">ログアウト</button></form>
+          <span className="text-xs text-gray-500">{member.display_name}</span>
+          <Link href="/login?redirectTo=/theater-log" className="text-sm text-blue-600 hover:underline">名前を切り替える</Link>
+          <form action={logout}><button type="submit" className="text-sm text-gray-500 hover:underline">選択を解除</button></form>
         </div>
       )}>
         忘れたくない歌声も、幕が下りたあとの気持ちも。あなたが出会った舞台を、一ページずつ残していきましょう。

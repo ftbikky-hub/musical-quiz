@@ -2,6 +2,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 劇団四季スケジュール機能は削除しました。既存DBの削除SQL・参照調査・実行手順と未実施の状況は [supabase/README.md](supabase/README.md) を参照してください。
 
+観劇記録・アーカイブは、パスワードを使わず登録名を選んで入れます。名前の一覧はSupabaseの `profiles` テーブルです。既存記録の保持・重複登録防止・管理方法は [supabase/name-selection.md](supabase/name-selection.md) を参照してください。検証は `npm run test:members` で実行できます。
+
 ## Getting Started
 
 First, run the development server:

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase/client";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentJournalMember } from "@/lib/journal-members";
 import { trimField, normalizeActorName } from "@/lib/theater-log-format";
 import type {
   AutoCastCandidate,
@@ -28,14 +29,11 @@ function requireAdmin() {
   return supabaseAdmin;
 }
 
-/** ログイン中のユーザーIDを取得する。ミドルウェアで既にゲートされている前提。 */
+/** 現在選択している登録名のIDを取得する。既存の観劇記録のIDをそのまま使う。 */
 async function requireCurrentUserId(): Promise<string> {
-  const supabaseServer = await createClient();
-  const {
-    data: { user },
-  } = await supabaseServer.auth.getUser();
-  if (!user) throw new Error("ログインが必要です");
-  return user.id;
+  const member = await getCurrentJournalMember();
+  if (!member) throw new Error("登録済みのお名前を選んでください");
+  return member.id;
 }
 
 /**
@@ -265,6 +263,7 @@ export async function updateTheaterLog(
 }
 
 export async function deleteTheaterLog(id: string) {
+  await requireCurrentUserId();
   const admin = requireAdmin();
 
   const { data: photos, error: fetchError } = await admin
@@ -286,6 +285,7 @@ export async function deleteTheaterLog(id: string) {
 
 /** 編集中に既存の写真を1枚外したとき、その場でDB行とStorageの実体を削除する。 */
 export async function deleteTheaterLogPhoto(photoId: string) {
+  await requireCurrentUserId();
   const admin = requireAdmin();
 
   const { data: photo, error: fetchError } = await admin
@@ -304,11 +304,13 @@ export async function deleteTheaterLogPhoto(photoId: string) {
 
 /** アップロード済みだが、記録の保存前に取り消された写真の後始末。 */
 export async function deleteStorageObject(path: string) {
+  await requireCurrentUserId();
   const admin = requireAdmin();
   await admin.storage.from(PHOTO_BUCKET).remove([path]);
 }
 
 export async function createSignedUploadUrl(logId: string, ext: string) {
+  await requireCurrentUserId();
   const admin = requireAdmin();
   const safeExt = ext.replace(/[^a-zA-Z0-9]/g, "") || "jpg";
   const path = `${logId}/${crypto.randomUUID()}.${safeExt}`;
@@ -485,10 +487,7 @@ export async function searchTheaterCandidates(query: string): Promise<string[]> 
 
 /** 同行者選択などに使う、自分以外の登録ユーザー一覧。 */
 export async function listOtherProfiles(): Promise<Profile[]> {
-  const supabaseServer = await createClient();
-  const {
-    data: { user },
-  } = await supabaseServer.auth.getUser();
+  const member = await getCurrentJournalMember();
 
   const { data, error } = await supabase
     .from("profiles")
@@ -497,7 +496,7 @@ export async function listOtherProfiles(): Promise<Profile[]> {
   if (error) throw error;
 
   const profiles = (data ?? []) as Profile[];
-  return user ? profiles.filter((p) => p.id !== user.id) : profiles;
+  return member ? profiles.filter((p) => p.id !== member.id) : profiles;
 }
 
 async function fetchParticipantLogs(userId: string): Promise<TheaterLog[]> {

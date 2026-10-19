@@ -10,12 +10,13 @@ import {
   fetchRatingGapRanking,
   fetchAllProfiles,
 } from "@/lib/supabase/theater-log-queries";
-import { createClient } from "@/lib/supabase/server";
+import { requireJournalMember } from "@/lib/journal-members";
 import { StatsTabs } from "@/components/theater-log/StatsTabs";
 
 export const revalidate = 0;
 
 export default async function TheaterLogStatsPage() {
+  const member = await requireJournalMember();
   const [total, byYear, byWork, byTheater, byActor, rankingByUser, ratingGap, profiles] =
     await Promise.all([
       fetchStatsTotal(),
@@ -28,11 +29,6 @@ export default async function TheaterLogStatsPage() {
       fetchAllProfiles(),
     ]);
 
-  const supabaseServer = await createClient();
-  const {
-    data: { user },
-  } = await supabaseServer.auth.getUser();
-
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
       <PageHeading section="journal" title="観劇の足跡を振り返る。" actions={<Link href="/theater-log" className="text-sm text-blue-600 hover:underline">← 一覧に戻る</Link>}>
@@ -41,7 +37,7 @@ export default async function TheaterLogStatsPage() {
 
       <StatsTabs
         profiles={profiles}
-        currentUserId={user?.id ?? null}
+        currentUserId={member.id}
         total={total}
         byYear={byYear}
         byWork={byWork}

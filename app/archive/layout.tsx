@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireJournalMember } from "@/lib/journal-members";
 import { logout } from "@/app/auth/actions";
 import { TheatreShell } from "@/components/theatre/TheatreShell";
 
 export const metadata: Metadata = { title: "公演アーカイブ | THEATRE NOTES" };
 
 export default async function ArchiveLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const username = (user?.user_metadata?.username as string | undefined) ?? user?.email;
+  const member = await requireJournalMember("/archive");
   return (
     <TheatreShell section="archive">
       <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 min-w-0 w-full">
@@ -19,9 +17,10 @@ export default async function ArchiveLayout({ children }: { children: React.Reac
             <Link href="/archive/works" className="hover:underline">作品一覧</Link>
             <Link href="/archive/venues" className="hover:underline">会場一覧</Link>
           </nav>
-          {username && <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-gray-500">{username}</span>
-            <form action={logout}><button type="submit" className="text-xs text-gray-500 hover:underline">ログアウト</button></form>
+          {member.display_name && <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-gray-500">{member.display_name}</span>
+            <Link href="/login?redirectTo=/archive" className="text-xs text-blue-600 hover:underline">名前を切り替える</Link>
+            <form action={logout}><button type="submit" className="text-xs text-gray-500 hover:underline">選択を解除</button></form>
           </div>}
         </div>
         {children}

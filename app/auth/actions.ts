@@ -1,104 +1,76 @@
 "use server";
 
+import { createHash, randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import {
-  usernameToEmail,
-  validateUsername,
-  validatePassword,
-} from "@/lib/auth-username";
+import { findJournalMember, listJournalMembers, selectJournalMember, clearJournalMember } from "@/lib/journal-members";
+import { journalRedirectTarget, memberNameKey, normalizeMemberName, validateMemberName } from "@/lib/member-names";
 
 export type AuthFormState = { error: string | null };
+const DUPLICATE_NAME = "その名前は登録済みです。名前の一覧から選んでください。";
 
-function safeRedirectTarget(value: FormDataEntryValue | null): string {
-  const s = String(value ?? "");
-  return s.startsWith("/") ? s : "/theater-log";
+export async function login(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const id = String(formData.get("memberId") ?? "");
+  let member;
+  try {
+    member = await findJournalMember(id);
+  } catch {
+    return { error: "名前を確認できませんでした。時間をおいて、もう一度お試しください。" };
+  }
+  if (!member) return { error: "登録済みのお名前を選んでください。" };
+  await selectJournalMember(member.id);
+  redirect(journalRedirectTarget(formData.get("redirectTo")));
 }
 
-export async function login(
-  _prevState: AuthFormState,
-  formData: FormData
-): Promise<AuthFormState> {
-  const username = String(formData.get("username") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const redirectTo = safeRedirectTarget(formData.get("redirectTo"));
+export async function signup(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const name = normalizeMemberName(String(formData.get("username") ?? ""));
+  const nameError = validateMemberName(name);
+  if (nameError) return { error: nameError };
+  if (!supabaseAdmin) return { error: "現在、お名前を登録できません。管理者にお問い合わせください。" };
 
-  if (!username || !password) {
-    return { error: "ユーザー名とパスワードを入力してください" };
-  }
+  try {
+    const key = memberNameKey(name);
+    const members = await listJournalMembers();
+    if (members.some((member) => memberNameKey(member.display_name) === key)) return { error: DUPLICATE_NAME };
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: usernameToEmail(username),
-    password,
-  });
-
-  if (error) {
-    return { error: "ユーザー名またはパスワードが違います" };
-  }
-
-  redirect(redirectTo);
-}
-
-export async function signup(
-  _prevState: AuthFormState,
-  formData: FormData
-): Promise<AuthFormState> {
-  const username = String(formData.get("username") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
-  const redirectTo = safeRedirectTarget(formData.get("redirectTo"));
-
-  const usernameError = validateUsername(username);
-  if (usernameError) return { error: usernameError };
-
-  const passwordError = validatePassword(password);
-  if (passwordError) return { error: passwordError };
-
-  if (password !== passwordConfirm) {
-    return { error: "パスワードが一致しません" };
-  }
-
-  if (!supabaseAdmin) {
-    return {
-      error: "SUPABASE_SERVICE_ROLE_KEY が未設定です。.env.local を確認してください。",
-    };
-  }
-
-  const email = usernameToEmail(username);
-  const { error: createError } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    // nameはprofilesへの同期トリガー(handle_new_user)が拾うため、
-    // 元の大文字小文字を保ったユーザー名をここに入れておく。
-    user_metadata: { username, name: username },
-  });
-
-  if (createError) {
-    if (createError.message.toLowerCase().includes("already")) {
-      return { error: "そのユーザー名は既に使われています" };
+    // 既存DBの profiles.id / theater_logs.user_id が auth.users を参照しているため、
+    // 新しい名前にも裏側の参照用IDを発行する。ユーザーによるパスワード入力・認証は行わない。
+    // 同じ正規化名は必ず同じ内部メールになるため、Authの一意制約が同時登録も防ぐ。
+    const email = `journal-${createHash("sha256").update(key).digest("hex").slice(0, 48)}@musical-quiz.local`;
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: randomBytes(32).toString("base64url"),
+      email_confirm: true,
+      user_metadata: { username: name, name },
+    });
+    if (error) {
+      if (error.code === "email_exists" || error.code === "user_already_exists" || /already|duplicate/i.test(error.message)) return { error: DUPLICATE_NAME };
+      return { error: "名前を登録できませんでした。時間をおいて、もう一度お試しください。" };
     }
-    return { error: `登録に失敗しました: ${createError.message}` };
-  }
+    if (!data.user) return { error: "名前の登録を確認できませんでした。もう一度お試しください。" };
 
-  const supabase = await createClient();
-  const { error: signInError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (signInError) {
-    return {
-      error: "登録は完了しましたが、ログインに失敗しました。ログイン画面からお試しください",
-    };
+    const id = data.user.id;
+    try {
+      // 既存のプロフィール同期トリガーを使用。未設定のDBでも同じIDで補う。
+      if (!await findJournalMember(id)) {
+        const { error: profileError } = await supabaseAdmin.from("profiles").insert({ id, display_name: name });
+        if (profileError) throw profileError;
+      }
+    } catch (error) {
+      // 新規作成分だけを取り消し、選べない名前がAuth側に残ることを防ぐ。
+      const { error: rollbackError } = await supabaseAdmin.auth.admin.deleteUser(id);
+      if (rollbackError) return { error: "登録状態を確認できません。管理者にお問い合わせください。" };
+      if ((error as { code?: string }).code === "23505") return { error: DUPLICATE_NAME };
+      return { error: "名前を登録できませんでした。もう一度お試しください。" };
+    }
+    await selectJournalMember(id);
+  } catch {
+    return { error: "名前を登録できませんでした。時間をおいて、もう一度お試しください。" };
   }
-
-  redirect(redirectTo);
+  redirect(journalRedirectTarget(formData.get("redirectTo")));
 }
 
 export async function logout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await clearJournalMember();
   redirect("/login");
 }

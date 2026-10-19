@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { TheatreShell } from "@/components/theatre/TheatreShell";
 
-export const metadata: Metadata = { title: "新規登録 | THEATRE NOTES" };
+export const metadata: Metadata = { title: "名前を登録 | THEATRE NOTES" };
 
 export default function SectionLayout({ children }: { children: React.ReactNode }) {
   return <TheatreShell section="account">{children}</TheatreShell>;
