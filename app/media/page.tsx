@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageHeading } from "@/components/theatre/PageHeading";
+import { EmptyState } from "@/components/theatre/EmptyState";
 import { supabase } from "@/lib/supabase/client";
 import { extractDriveFileId, driveEmbedUrl, driveThumbnailUrl } from "@/lib/drive";
 import { DeleteMediaButton } from "@/components/media/DeleteMediaButton";
@@ -112,17 +114,14 @@ export default async function MediaPage({
   const { data: items, error } = await query;
 
   if (error) {
-    return <p>データの取得に失敗しました。</p>;
+    return <div className="max-w-6xl mx-auto p-4 sm:p-6"><PageHeading section="collection" title="お気に入りのコレクション" /><EmptyState title="コレクションを読み込めませんでした。">時間をおいて、もう一度お試しください。</EmptyState></div>;
   }
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">メディア</h1>
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
-          &larr; トップに戻る
-        </Link>
-      </div>
+      <PageHeading section="collection" title="お気に入りのコレクション">
+        ふと見返したくなる動画、何度も聴きたい音楽、大切な写真。舞台につながる好きなものを、自分だけの棚に。
+      </PageHeading>
 
       <div className="flex gap-2 border-b border-gray-200">
         {TABS.map((tab) => {
@@ -151,6 +150,7 @@ export default async function MediaPage({
             name="q"
             defaultValue={q ?? ""}
             placeholder="タイトル・説明で検索"
+            aria-label="コレクションをタイトル・説明で検索"
             className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm"
           />
           <button
@@ -170,9 +170,9 @@ export default async function MediaPage({
       </div>
 
       {items?.length === 0 && (
-        <p className="text-gray-500 text-sm">
-          {q || activeType ? "条件に一致するものがありません。" : "まだ何もありません。"}
-        </p>
+        <EmptyState title={q || activeType ? "この条件のコレクションは、まだありません。" : "あなたの「好き」を、ひとつずつ。"}>
+          {q || activeType ? "キーワードや種類を変えて、もう一度探してみてください。" : "「追加」から、お気に入りの動画・音楽・写真を並べてみましょう。"}
+        </EmptyState>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

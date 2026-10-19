@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ミュージカルクイズ</title>
+<title>ミュージカルクイズ | THEATRE NOTES</title>
 <style>
   :root {
     --bg: #1b1023;
@@ -469,13 +469,30 @@
   .hidden { display: none !important; }
   .spacer { height: 14px; }
 </style>
+<link rel="stylesheet" href="/theatre-quiz.css" />
 </head>
 <body>
-  <div class="app">
-    <header>
-      <a href="/" style="position:absolute;top:14px;left:14px;font-size:0.8rem;color:inherit;opacity:0.75;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">← 入り口に戻る</a>
-      <h1>🎭 <span>ミュージカル</span>クイズ</h1>
-    </header>
+  <a class="theatre-skip" href="#quiz-content">クイズ本文へスキップ</a>
+  <header class="theatre-masthead">
+    <div class="theatre-brand-row">
+      <a class="theatre-brand" href="/" aria-label="THEATRE NOTES トップページ">
+        <span class="theatre-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16h12l-2-3V9a4 4 0 0 0-8 0v4l-2 3ZM10 19a2 2 0 0 0 4 0M12 3v2" /></svg></span>
+        <span>THEATRE NOTES<small>A PERSONAL MUSICAL LIBRARY</small></span>
+      </a>
+      <p>幕が下りても、物語はつづく。</p>
+      <a class="theatre-home" href="/">扉へ戻る ↗</a>
+    </div>
+    <nav class="theatre-nav" aria-label="ミュージカルの書斎"><div>
+      <a href="/cast"><span>01</span>キャスト</a><a href="/archive"><span>02</span>アーカイブ</a><a href="/theater-log"><span>03</span>観劇記録</a><a href="/youtube"><span>04</span>公式映像</a><a href="/quiz.html" aria-current="page"><span>05</span>クイズ</a><a href="/media"><span>06</span>コレクション</a>
+    </div></nav>
+  </header>
+  <main class="app" id="quiz-content" tabindex="-1">
+    <div class="theatre-breadcrumb"><a href="/">THEATRE NOTES</a><span>/</span>A LITTLE ENCORE</div>
+    <div class="theatre-heading">
+      <p>A LITTLE ENCORE <span>05 / THEATRE NOTES</span></p>
+      <h1>ミュージカルクイズ</h1>
+      <div>知っていると、次の観劇がもっと楽しい。<br />舞台の物語や歌声を思い出しながら、小さなアンコールを。</div>
+    </div>
 
     <div class="bgm-bar">
       <span class="bgm-bar-label">🎵 BGM</span>
@@ -497,10 +514,7 @@
 
     <div id="screen-start" class="hidden">
       <div class="hero">
-        <div class="hero-glow"></div>
-        <div class="hero-notes"><span>♪</span><span>♫</span><span>♪</span><span>♬</span></div>
-        <span class="hero-emoji">🎟️🎶🎭</span>
-        <p class="hero-tagline">さあ、幕を開けよう</p>
+        <p class="hero-tagline">OVERTURE — さあ、幕を開けよう。</p>
       </div>
       <div class="card">
         <h2>クイズを始めよう</h2>
@@ -534,7 +548,7 @@
             type="text"
             maxlength="20"
             placeholder="例）びっきぃ"
-            style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:#1f1329;color:var(--text);font-size:0.98rem;margin-bottom:8px;"
+            style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--panel-border);background:var(--panel);color:var(--text);font-size:0.98rem;margin-bottom:8px;"
           />
           <p class="name-error hidden" id="name-error"></p>
           <button id="btn-start-named" class="btn btn-primary" disabled>この名前で登録してスタート</button>
@@ -603,8 +617,9 @@
       </div>
     </div>
 
-    <div id="error-box" class="error-toast hidden"></div>
-  </div>
+    <div id="error-box" class="error-toast hidden" role="alert"></div>
+  </main>
+  <footer class="theatre-footer"><p>好きな舞台のことなら、もう少し。</p><span>THEATRE NOTES — 舞台の余韻を、日常に。</span><small>個人の非公式サイトです。劇団四季および各作品の権利元とは関係ありません。</small></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -804,6 +819,7 @@
       state.selectedDifficulty = value;
       difficultyButtons.forEach(function (b) {
         b.classList.toggle("selected", b.getAttribute("data-difficulty") === value);
+        b.setAttribute("aria-pressed", b.getAttribute("data-difficulty") === value ? "true" : "false");
       });
     }
     difficultyButtons.forEach(function (b) {
@@ -818,6 +834,7 @@
       state.selectedMode = value;
       modeButtons.forEach(function (b) {
         b.classList.toggle("selected", b.getAttribute("data-mode") === value);
+        b.setAttribute("aria-pressed", b.getAttribute("data-mode") === value ? "true" : "false");
       });
     }
     modeButtons.forEach(function (b) {

@@ -29,6 +29,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={selected}
       className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold transition ${
         selected
           ? "border-neutral-900 bg-neutral-900 text-white"
@@ -169,7 +170,7 @@ export default function SearchPinTab({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-5">
         <div className="flex flex-col gap-1">
           <span className="text-[11px] font-bold text-neutral-400">演目</span>
           <div className="flex flex-wrap gap-1.5">
@@ -319,7 +320,7 @@ export default function SearchPinTab({
       <div className="rounded-2xl border border-neutral-200 bg-white p-4">
         <h3 className="mb-2 text-sm font-bold">日付から公演を探す</h3>
         <p className="mb-2 text-xs text-neutral-400">
-          優先度は低めの機能ですが、日付の一部（例：2024-05）を入れると、選んだ演目・劇場・マチネ/ソワレ条件に合う公演が下に出ます。クリックするとその日の配役表を見られます。
+          日付や年月（例：2024-05）から、あの日の舞台へ。演目・劇場・マチネ／ソワレで絞り込み、公演を選ぶとその日の配役表が見られます。
         </p>
         <input
           type="text"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { EmptyState } from "@/components/theatre/EmptyState";
 import {
   YtVideo,
   YtWork,
@@ -197,7 +198,8 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
             <input
               type="text"
               placeholder="キーワード..."
-              className="w-full border-gray-300 rounded-lg p-2 text-sm"
+              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              aria-label="動画のタイトルを検索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -383,6 +385,8 @@ export default function YoutubeIndexShell({ initialVideos, works, performers, th
           <option key={p.id} value={p.name} />
         ))}
       </datalist>
+
+      {filteredVideos.length === 0 && <EmptyState title="この条件の映像は見つかりませんでした。">作品名や出演者、キーワードを変えて、次の一場面を探してみてください。</EmptyState>}
 
       {/* 動画リストエリア */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

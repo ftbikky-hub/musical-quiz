@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeading } from "@/components/theatre/PageHeading";
 import {
   fetchStatsTotal,
   fetchStatsByYear,
@@ -34,12 +35,9 @@ export default async function TheaterLogStatsPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">実績</h1>
-        <Link href="/theater-log" className="text-sm text-blue-600 hover:underline">
-          &larr; 一覧に戻る
-        </Link>
-      </div>
+      <PageHeading section="journal" title="観劇の足跡を振り返る。" actions={<Link href="/theater-log" className="text-sm text-blue-600 hover:underline">← 一覧に戻る</Link>}>
+        何度も出会った作品、心に残る出演者。積み重ねた記録から、あなたの舞台の旅を振り返ります。
+      </PageHeading>
 
       <StatsTabs
         profiles={profiles}

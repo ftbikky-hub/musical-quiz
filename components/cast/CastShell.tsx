@@ -39,12 +39,13 @@ export default function CastShell({
 
   return (
     <div className="flex flex-1 flex-col gap-5">
-      <div className="flex gap-2 overflow-x-auto border-b border-neutral-200">
+      <div className="flex gap-2 overflow-x-auto border-b border-neutral-200" aria-label="キャスト情報の表示切り替え">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
+            aria-pressed={tab === t.key}
             className={`-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm font-bold transition ${
               tab === t.key
                 ? "border-neutral-900 text-neutral-900"

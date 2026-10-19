@@ -1,15 +1,13 @@
 import Link from "next/link";
+import { PageHeading } from "@/components/theatre/PageHeading";
 import { addMedia } from "./actions";
 
 export default function UploadMediaPage() {
   return (
     <div className="max-w-md mx-auto p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">追加</h1>
-        <Link href="/media" className="text-sm text-blue-600 hover:underline">
-          &larr; 一覧に戻る
-        </Link>
-      </div>
+      <PageHeading section="collection" title="お気に入りを、棚に加える。" actions={<Link href="/media" className="text-sm text-blue-600 hover:underline">← 一覧に戻る</Link>}>
+        また出会いたい映像や音楽を、ひとつ。Googleドライブの共有リンクから追加できます。
+      </PageHeading>
 
       <form action={addMedia} className="space-y-4">
         <fieldset>

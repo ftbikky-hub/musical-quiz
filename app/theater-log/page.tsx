@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageHeading } from "@/components/theatre/PageHeading";
+import { EmptyState } from "@/components/theatre/EmptyState";
 import { fetchTheaterLogs } from "@/lib/supabase/theater-log-queries";
 import { supabase } from "@/lib/supabase/client";
 import { createClient } from "@/lib/supabase/server";
@@ -50,37 +52,27 @@ export default async function TheaterLogPage({
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">観劇記録</h1>
-        <div className="flex items-center gap-3">
-          {username && (
-            <>
-              <span className="text-xs text-gray-500">{username} でログイン中</span>
-              <form action={logout}>
-                <button type="submit" className="text-sm text-gray-500 hover:underline">
-                  ログアウト
-                </button>
-              </form>
-            </>
-          )}
-          <Link href="/" className="text-sm text-blue-600 hover:underline">
-            &larr; トップに戻る
-          </Link>
+      <PageHeading section="journal" title="私の観劇手帳" actions={username && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs text-gray-500">{username}</span>
+          <form action={logout}><button type="submit" className="text-sm text-gray-500 hover:underline">ログアウト</button></form>
         </div>
-      </div>
+      )}>
+        忘れたくない歌声も、幕が下りたあとの気持ちも。あなたが出会った舞台を、一ページずつ残していきましょう。
+      </PageHeading>
 
       <div className="flex gap-3">
         <Link
           href="/theater-log/new"
           className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm text-center shrink-0"
         >
-          + 新規登録
+          + 観劇を記録する
         </Link>
         <Link
           href="/theater-log/stats"
           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm text-center shrink-0"
         >
-          実績を見る
+          観劇を振り返る
         </Link>
       </div>
 
@@ -89,7 +81,7 @@ export default async function TheaterLogPage({
         className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-white border border-gray-100 rounded-xl p-4"
       >
         <label className="block col-span-1">
-          <span className="block text-xs text-gray-500 mb-1">From</span>
+          <span className="block text-xs text-gray-500 mb-1">観劇日（開始）</span>
           <input
             type="date"
             name="from"
@@ -98,7 +90,7 @@ export default async function TheaterLogPage({
           />
         </label>
         <label className="block col-span-1">
-          <span className="block text-xs text-gray-500 mb-1">To</span>
+          <span className="block text-xs text-gray-500 mb-1">観劇日（終了）</span>
           <input
             type="date"
             name="to"
@@ -147,7 +139,9 @@ export default async function TheaterLogPage({
       </form>
 
       {items.length === 0 && (
-        <p className="text-gray-500 text-sm">条件に一致する記録がありません。</p>
+        <EmptyState title={from || to || work || theater || actor ? "この条件の観劇記録は見つかりませんでした。" : "最初の一幕を、手帳に。"}>
+          {from || to || work || theater || actor ? "日付や作品名などの条件を変えて探してみてください。" : "「観劇を記録する」から、心に残った舞台を残しましょう。"}
+        </EmptyState>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

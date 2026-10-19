@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageHeading } from "@/components/theatre/PageHeading";
 import CastShell from "@/components/cast/CastShell";
 import { fetchWorks, fetchTheaters } from "@/lib/supabase/queries";
 import {
@@ -43,28 +43,16 @@ export default async function CastPage() {
   return (
     <main className="flex min-h-screen flex-col bg-neutral-50 text-neutral-900">
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-6 sm:px-6">
-        <div className="mb-4 flex items-center justify-between">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-800"
-          >
-            ← 入り口に戻る
-          </Link>
-          <span className="text-xs text-neutral-400">非公式ファンツール</span>
-        </div>
-
-        <h1 className="mb-1 text-2xl font-bold sm:text-3xl">
-          🎭 劇団四季 過去キャスト一覧（非公式）
-        </h1>
-        <p className="mb-6 text-sm text-neutral-500">
-          公式サイト・劇団四季とは関係のない個人用の確認ツールです。対象は「アナと雪の女王」「ノートルダムの鐘」の過去公演です。
-        </p>
+        <PageHeading section="cast" title="過去キャスト一覧">
+          あの役を演じた、その人にもう一度。配役や共演のつながりをたどってみましょう。
+          <br />対象作品：『アナと雪の女王』『ノートルダムの鐘』の過去公演。
+        </PageHeading>
 
         {loadError ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             データの取得に失敗しました：{loadError}
             <br />
-            .env.local の Supabase 接続設定をご確認ください。
+            時間をおいて、もう一度お試しください。
           </div>
         ) : (
           <CastShell

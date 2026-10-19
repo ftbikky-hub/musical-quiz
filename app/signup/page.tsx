@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageHeading } from "@/components/theatre/PageHeading";
 import { Suspense, useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signup, type AuthFormState } from "@/app/auth/actions";
@@ -13,8 +14,8 @@ function SignupForm() {
   const [state, formAction, pending] = useActionState(signup, initialState);
 
   return (
-    <div className="max-w-sm mx-auto p-4 sm:p-6 mt-12 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 text-center">新規登録</h1>
+    <div className="max-w-lg mx-auto p-4 sm:p-6 mt-4 space-y-6">
+      <PageHeading section="account" title="あなたの観劇手帳を。">好きな舞台の記憶を、今日から一緒に残していきましょう。</PageHeading>
       <form
         action={formAction}
         className="space-y-4 bg-white border border-gray-100 rounded-xl p-5"

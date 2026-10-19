@@ -1,0 +1,94 @@
+:root {
+  --bg: #f7f4ec; --panel: #fffdf7; --panel-border: #d8d2c0;
+  --accent: #345f47; --accent-dim: #a18a5b; --text: #233731; --text-dim: #6f7a66;
+  --correct: #327450; --incorrect: #b74545;
+  --theatre-serif: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", "Noto Serif CJK JP", serif;
+  color-scheme: light;
+}
+body { display: block; padding: 0; background: var(--bg); background-image: none; color: var(--text); }
+a { color: inherit; }
+a:focus-visible, button:focus-visible { outline: 2px solid #9c8049; outline-offset: 4px; }
+.theatre-skip { position: fixed; top: -100px; left: 16px; background: var(--panel); color: var(--text); padding: 12px 20px; z-index: 100; }
+.theatre-skip:focus { top: 12px; }
+.theatre-masthead { display: block; margin: 0; background: #162b2a; color: #f5ebd8; }
+.theatre-brand-row { max-width: 1240px; margin: auto; padding: 22px 40px; display: flex; align-items: center; justify-content: space-between; gap: 25px; }
+.theatre-brand { display: flex; align-items: center; gap: 13px; font: 19px Georgia, serif; letter-spacing: .13em; text-decoration: none; flex-shrink: 0; }
+.theatre-brand small { display: block; font: 7px Arial, sans-serif; color: #b7c1ad; letter-spacing: .24em; margin-top: 7px; }
+.theatre-mark { display: grid; place-items: center; width: 35px; height: 42px; border: 1px solid #b49a6570; border-radius: 22px 22px 2px 2px; color: #d9bc83; }
+.theatre-mark svg { width: 25px; height: 25px; }
+.theatre-brand-row p { font: 12px var(--theatre-serif); letter-spacing: .1em; color: #c7ccb9; }
+.theatre-home { font-size: 11px; color: #d0c5aa; text-decoration: none; }
+.theatre-nav { border-top: 1px solid #ffffff12; }
+.theatre-nav > div { display: flex; max-width: 1160px; margin: auto; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #8f835c #162b2a; gap: 12px; }
+.theatre-nav a { display: inline-flex; align-items: center; gap: 10px; padding: 15px 17px 14px; border-bottom: 2px solid transparent; color: #aebca9; font-size: 12px; text-decoration: none; flex-shrink: 0; }
+.theatre-nav a span { font: italic 11px Georgia, serif; color: #a79976; }
+.theatre-nav a[aria-current] { color: #f1d9a9; border-color: #d4b87e; background: #ffffff06; }
+.theatre-nav a:hover { color: #f9ebce; }
+.app { width: 100%; max-width: 720px; margin: auto; padding: 26px 24px 55px; min-height: 65vh; outline: none; }
+.theatre-breadcrumb { display: flex; align-items: center; gap: 13px; color: #7a7f6b; font: 8px Arial, sans-serif; letter-spacing: .13em; margin-bottom: 32px; }
+.theatre-breadcrumb a { text-decoration: none; }
+.theatre-heading { position: relative; padding-bottom: 27px; margin-bottom: 24px; border-bottom: 1px solid #d4ccba; }
+.theatre-heading::after { content: ""; width: 42px; height: 2px; background: #b49a65; position: absolute; bottom: -1px; left: 0; }
+.theatre-heading > p { font: 9px Arial, sans-serif; color: #86734d; letter-spacing: .16em; display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin: 0 0 17px; }
+.theatre-heading > p span { font: italic 10px Georgia, serif; padding-left: 16px; border-left: 1px solid #ccc3ad; color: #91937e; }
+.theatre-heading h1 { font: 600 clamp(24px, 3vw, 33px)/1.6 var(--theatre-serif); margin: 0 0 12px; letter-spacing: .035em; }
+.theatre-heading > div { font-size: 12px; line-height: 2; color: #6e7966; }
+.bgm-bar { padding: 12px 15px; border: 1px solid var(--panel-border); margin: 0 0 18px; background: #f0ede1; border-radius: 4px; gap: 8px; font-size: 12px; }
+.bgm-bar-label { font-size: 11px; }
+.bgm-pill { font-size: 11px; padding: 6px 10px; }
+.bgm-pill.playing { background: #e2e9d8; }
+.hero { padding: 4px 0 18px; margin: 0; }
+.hero-tagline { font: 12px var(--theatre-serif); color: #84734f; letter-spacing: .1em; margin: 0; }
+.card { background: var(--panel); border: 1px solid var(--panel-border); border-top: 2px solid #b5a077; border-radius: 7px; padding: 32px; box-shadow: 0 5px 22px #263a2905; backdrop-filter: none; -webkit-backdrop-filter: none; }
+h2, h3 { font-family: var(--theatre-serif); font-weight: 600; letter-spacing: .035em; }
+h2 { font-size: 23px; }
+.muted { font-size: 13px; line-height: 1.9; }
+#screen-start .card > .muted { margin-bottom: 25px; text-align: left; }
+.btn { font-size: 14px; border-radius: 4px; padding: 13px 16px; }
+.btn-primary { color: #fffdf7; }
+.btn-primary:hover:not(:disabled) { background: #294e3c; }
+.btn-secondary { color: #59694f; }
+.difficulty-pill, .mode-pill { font-size: 12px; border-radius: 4px; }
+.difficulty-pill.selected, .mode-pill.selected { color: #fffdf7; }
+.select-label { font-size: 12px; margin-top: 20px; }
+.player-tabs { margin-top: 28px; }
+.tab-btn { font-size: 12px; }
+input { background: var(--panel); border-radius: 4px !important; }
+input:focus { outline: none; border-color: #8f7951 !important; box-shadow: 0 0 0 3px #bca47022; }
+.quiz-progress-bar, .analysis-cat-bar { background: #e9e5d6; }
+.question-text { font-family: var(--theatre-serif); font-size: 21px; line-height: 1.9; }
+.choice-btn { background: #f7f4ec; border-radius: 4px; font-size: 14px; padding-right: 40px; line-height: 1.7; }
+.choice-btn.correct { background: #e6efdf; color: #275239; }
+.choice-btn.incorrect { background: #f8e7df; color: #8f3832; }
+.explanation { background: #f0eddf; color: #5e6b53; font-size: 13px; line-height: 1.9; }
+.name-error, .error-toast { color: #a64039; }
+.existing-player-actions .btn-row-delete:hover { color: #a64039; }
+.theatre-footer { border-top: 1px solid #d9d4c2; background: #eeebdf; text-align: center; padding: 28px 24px; color: #6e7963; }
+.theatre-footer p { font: 14px var(--theatre-serif); margin: 0 0 12px; }
+.theatre-footer > span { font: 9px Georgia, var(--theatre-serif); letter-spacing: .1em; }
+.theatre-footer small { display: block; font-size: 9px; line-height: 1.8; margin-top: 15px; }
+@media (max-width: 800px) {
+  .theatre-brand-row { padding: 21px 25px; }
+  .theatre-brand-row p { display: none; }
+  .theatre-nav > div { padding: 0 12px; gap: 0; }
+  .theatre-nav a { padding: 14px 13px 12px; gap: 7px; font-size: 11px; }
+}
+@media (max-width: 480px) {
+  .app { padding: 23px 20px 40px; }
+  .theatre-brand { font-size: 15px; gap: 10px; }
+  .theatre-brand small { font-size: 6px; }
+  .theatre-brand-row { padding: 18px 20px; gap: 12px; }
+  .theatre-home { font-size: 10px; }
+  .card { padding: 25px 19px; }
+  .question-text { font-size: 19px; }
+  .quiz-progress-row { font-size: 11px; flex-wrap: wrap; gap: 6px; }
+  .hero-tagline { font-size: 11px; }
+  .bgm-bar { padding: 10px; gap: 6px; }
+  .bgm-pill { padding: 6px 8px; }
+}
+@media (max-width: 680px) {
+  .theatre-nav > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0 12px; overflow: visible; }
+  .theatre-nav a { justify-content: center; padding: 12px 5px 10px; gap: 6px; font-size: 10px; }
+  .theatre-nav a span { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
