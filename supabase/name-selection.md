@@ -4,7 +4,7 @@
 
 ## 名前の管理と既存記録
 
-- 名前の一覧は Supabase **Table Editor → `profiles`** の `display_name` です。
+- 名前の一覧は Supabase **Table Editor → `profiles`** の `display_name` です。公開用クライアントで一覧と選択した名前を読み取り、管理用キーの設定には依存しません。
 - 既存の `profiles.id` をそのまま選択します。`theater_logs.user_id`、同行者、個人タイムライン、比較・集計のIDは変えません。
 - 名前は前後の空白を除いて保存します。重複判定はUnicode NFKC・前後の空白除去・英字の小文字化で揃えます。同じ表記や全半角・大小文字違いの名前をアプリから重複登録できません。
 - 選択したIDだけをHTTP-only・SameSite=LaxのCookieに保存し、サーバーで実在するプロフィールか確認します。解除や別の名前への切り替えもできます。

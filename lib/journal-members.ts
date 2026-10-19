@@ -1,18 +1,17 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 import { JOURNAL_MEMBER_COOKIE, isMemberId, journalRedirectTarget } from "./member-names";
 import type { Profile } from "@/lib/supabase/types";
 
 export type JournalMember = Profile;
 
-/** 氏名選択用の一覧。認証トークン・メール・パスワードは返さない。 */
+/** 公開プロフィールを読む。管理用キーの設定に名前選択を依存させない。
+ * 認証トークン・メール・パスワードは返さない。 */
 export async function listJournalMembers(): Promise<JournalMember[]> {
-  const client = supabaseAdmin ?? supabase;
   const members: JournalMember[] = [];
   for (let offset = 0; ; offset += 1000) {
-    const { data, error } = await client.from("profiles")
+    const { data, error } = await supabase.from("profiles")
       .select("id, display_name, avatar_url").order("id").range(offset, offset + 999);
     if (error) throw error;
     const rows = (data ?? []) as JournalMember[];
@@ -24,8 +23,7 @@ export async function listJournalMembers(): Promise<JournalMember[]> {
 
 export async function findJournalMember(id: string): Promise<JournalMember | null> {
   if (!isMemberId(id)) return null;
-  const client = supabaseAdmin ?? supabase;
-  const { data, error } = await client.from("profiles")
+  const { data, error } = await supabase.from("profiles")
     .select("id, display_name, avatar_url").eq("id", id).maybeSingle();
   if (error) throw error;
   return data?.display_name?.trim() ? data as JournalMember : null;

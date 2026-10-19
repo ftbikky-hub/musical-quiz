@@ -120,6 +120,36 @@ test('registration fills a missing profile trigger and rolls back a failed new p
   assert.equal(failed.profiles[0].id, id);
 });
 
+test('member list and lookup use the working public connection even when an admin client is configured', async () => {
+  const calls = [];
+  const client = { from(table) {
+    assert.equal(table, 'profiles');
+    return { select(columns) {
+      assert.equal(columns, 'id, display_name, avatar_url');
+      return {
+        order(column) { assert.equal(column, 'id'); return { async range(start, end) {
+          calls.push(['list', start, end]);
+          return { data: [member, { ...member, id: '00000000-0000-4000-8000-000000000002', display_name: '  ' }], error: null };
+        } }; },
+        eq(column, value) { assert.equal(column, 'id'); return { async maybeSingle() {
+          calls.push(['find', value]); return { data: value === id ? member : null, error: null };
+        } }; },
+      };
+    } };
+  } };
+  const session = load('lib/journal-members.ts', {
+    'next/headers': {}, 'next/navigation': navigation,
+    '@/lib/supabase/client': { supabase: client },
+    '@/lib/supabase/admin': { supabaseAdmin: { from() { throw Error('Invalid admin credentials'); } } },
+    './member-names': names,
+  });
+  const members = await session.listJournalMembers();
+  assert.equal(members.length, 1);
+  assert.equal(members[0].id, id);
+  assert.equal((await session.findJournalMember(id)).display_name, 'びっきぃ');
+  assert.deepEqual(calls, [['list', 0, 999], ['find', id]]);
+});
+
 test('selection cookie is HTTP-only and a deleted/invalid profile is not accepted', async () => {
   const values = new Map(), writes = [], profiles = [member];
   const cookies = async () => ({ get: (name) => values.has(name) ? { value: values.get(name) } : undefined,
