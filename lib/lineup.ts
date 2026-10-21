@@ -9,6 +9,22 @@ export interface LineupSnapshot {
   checked: string; source: string; displayFrom: string; displayThrough: string;
   featuredIds: string[]; performances: LineupPerformance[];
 }
+/** ブラウザやサーバーの現地時刻によらず、日本時間の月を返す。 */
+export function lineupCurrentMonth(now: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit" }).formatToParts(now);
+  return `${parts.find((p) => p.type === "year")!.value}-${parts.find((p) => p.type === "month")!.value}`;
+}
+export function shiftLineupMonth(month: string, offset: number): string {
+  const [year, value] = month.split("-").map(Number);
+  const index = year * 12 + value - 1 + offset;
+  return `${Math.floor(index / 12)}-${String((index % 12 + 12) % 12 + 1).padStart(2, "0")}`;
+}
+export type LineupRangeMode = "upcoming" | "past" | "recorded";
+export function lineupRange(snapshot: LineupSnapshot, currentMonth: string, mode: LineupRangeMode, anchor?: string) {
+  if (mode === "recorded") return { from: snapshot.displayFrom, through: snapshot.displayThrough };
+  const from = anchor || (mode === "past" ? shiftLineupMonth(currentMonth, -12) : currentMonth);
+  return { from, through: shiftLineupMonth(from, mode === "past" ? 11 : 12) };
+}
 export function lineupMonths(from: string, through: string): string[] {
   const [fy, fm] = from.split("-").map(Number);
   const [ty, tm] = through.split("-").map(Number);

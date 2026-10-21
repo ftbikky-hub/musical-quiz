@@ -55,3 +55,27 @@ test('favorite storage tolerates damaged or unexpected values and keeps performa
   const ids = parseLineupFavorites('["bell-yokohama","bell-osaka","bell-osaka",1,{}]');
   assert.equal(ids.length,2); assert(ids.includes('bell-yokohama')); assert(ids.includes('bell-osaka'));
 });
+
+test('Japan month rollover advances upcoming view, with a stable server snapshot fallback', () => {
+  const { lineupCurrentMonth, lineupRange, shiftLineupMonth } = exportsForTest;
+  assert.equal(lineupCurrentMonth(new Date('2026-10-31T14:59:59Z')), '2026-10');
+  assert.equal(lineupCurrentMonth(new Date('2026-10-31T15:00:00Z')), '2026-11');
+  const next = lineupRange(data, '2026-11', 'upcoming');
+  assert.equal(next.from, '2026-11'); assert.equal(next.through, '2027-11');
+  assert.equal(shiftLineupMonth('2026-01', -1), '2025-12');
+  assert.equal(shiftLineupMonth('2026-12', 1), '2027-01');
+});
+
+test('past and recorded ranges preserve older bands without extending uncertain dates', () => {
+  const { lineupRange } = exportsForTest;
+  const past = lineupRange(data, '2027-11', 'past');
+  assert.equal(past.from, '2026-11'); assert.equal(past.through, '2027-10');
+  const recorded = lineupRange(data, '2028-05', 'recorded');
+  assert.equal(recorded.from, '2026-10'); assert.equal(recorded.through, '2027-10');
+  const custom = lineupRange(data, '2026-11', 'upcoming', '2026-10');
+  assert.equal(custom.from, '2026-10'); assert.equal(custom.through, '2027-10');
+  // 未発表の終演を、表示窓の延長に合わせて補完しない。
+  const future = lineupRange(data, '2028-01', 'upcoming');
+  assert.equal(data.performances.filter(p => p.from <= future.through && p.through >= future.from).length, 0);
+  assert.equal(get('bttf').end, null);
+});
