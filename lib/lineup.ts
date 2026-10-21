@@ -4,10 +4,13 @@ export interface LineupPerformance {
   /** 月の表示範囲。厳密な開幕日・千秋楽日を表さない。 */
   from: string; through: string;
   monthly?: boolean; open?: boolean; note: string; color: string;
+  dateUnknown?: boolean;
+  history?: { year: number; workId: number | null; recordStart: string | null; recordEnd: string | null };
 }
 export interface LineupSnapshot {
   checked: string; source: string; displayFrom: string; displayThrough: string;
   featuredIds: string[]; performances: LineupPerformance[];
+  historyYear?: number;
 }
 /** ブラウザやサーバーの現地時刻によらず、日本時間の月を返す。 */
 export function lineupCurrentMonth(now: Date): string {
@@ -42,6 +45,8 @@ export function lineupDateText(value: string): string {
   const [year, month, day] = value.split("-"); return `${year}年${Number(month)}月${Number(day)}日`;
 }
 export function lineupPeriod(p: LineupPerformance): string {
+  if (p.history) return p.dateUnknown ? "月別の期間は未確認（日程原文を参照）"
+    : `記録上の期間：${lineupDateText(p.history.recordStart!)} 〜 ${lineupDateText(p.history.recordEnd!)}（開幕日・千秋楽とは限りません）`;
   if (p.start && p.end) return `${lineupDateText(p.start)} 〜 ${lineupDateText(p.end)}`;
   if (p.start) return `${lineupDateText(p.start)} 開幕 ／ 終演時期未発表`;
   if (p.monthly) return p.open

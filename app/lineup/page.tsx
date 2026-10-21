@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { TheatreShell } from "@/components/theatre/TheatreShell";
 import { PageHeading } from "@/components/theatre/PageHeading";
-import { LineupPlanner } from "@/components/lineup/LineupPlanner";
+import { LineupExperience } from "@/components/lineup/LineupExperience";
 import snapshot from "@/data/shiki-lineup.json";
 import styles from "@/components/lineup/lineup.module.css";
 
@@ -9,6 +9,6 @@ export const metadata: Metadata = { title: "劇団四季の上演予定 | THEATR
 export default function LineupPage() {
   return <TheatreShell section="lineup"><div className={styles.page}>
     <PageHeading section="lineup" title="次の観劇を、見つけよう。">いつ、どこで、何が観られる？ 四季の一年を見渡して、楽しみな予定をひとつずつ。</PageHeading>
-    <LineupPlanner snapshot={snapshot}/>
+    <LineupExperience snapshot={snapshot}/>
   </div></TheatreShell>;
 }

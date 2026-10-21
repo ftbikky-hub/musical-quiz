@@ -85,3 +85,12 @@
 .coverage { font-size: 11px; color: var(--muted); line-height: 1.9; margin: 0 0 18px; }
 .timeline thead th[aria-current=date] { background: #345b45; color: #fff9eb; }
 .timeline thead th[aria-current=date] small { color: #e0c98b; }
+.historyTabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 30px; border-bottom: 1px solid #dcd7c7; padding-bottom: 14px; }
+.historyTabs button { cursor: pointer; padding: 12px 18px; border: 1px solid #dcd7c7; border-radius: 4px; color: #345b45; background: #fffdf7; font-size: 12px; }
+.historyTabs button[aria-pressed=true] { background: #263e33; border-color: #263e33; color: #fff9eb; }
+.historyHeading { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; color: #263e33; }
+.historyHeading h2 { text-wrap: balance; font: 24px/1.8 var(--theatre-serif); margin: 0; }
+.historyHeading p:not(.eyebrow) { font-size: 12px; line-height: 1.9; color: #737b68; margin-top: 12px; }
+.historyHeading label { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.historyHeading select { background: #fffdf7; border: 1px solid #dcd7c7; border-radius: 4px; padding: 11px 18px; color: #345b45; }
+.dialog p { white-space: pre-line; }

@@ -79,3 +79,67 @@ test('past and recorded ranges preserve older bands without extending uncertain 
   assert.equal(data.performances.filter(p => p.from <= future.through && p.through >= future.from).length, 0);
   assert.equal(get('bttf').end, null);
 });
+
+const historyExports = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(require.resolve('../lib/lineup-history.ts'), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText, { exports: historyExports });
+const historyRow = (extra = {}) => ({ perf_key: '2000-01', year: 2000, work_id: 1, work: '作品', theater: '劇場', run_name: '作品 東京',
+  start_date: '1998-12-20', end_date: '2017-05-28', schedule_text: '通算の期間', notes: null,
+  archive_works: { name: '作品' }, archive_venues: { name: '劇場', venue_type: '専用劇場' }, ...extra });
+
+test('archive annual bands do not turn year boundaries into opening/closing dates', () => {
+  const { archiveLineupSnapshot } = historyExports;
+  const snapshot = archiveLineupSnapshot(2000, [historyRow(), historyRow({ year: 2001, perf_key: '2001-01' })]);
+  assert.equal(snapshot.performances.length, 1);
+  const p = snapshot.performances[0];
+  assert.equal(p.from, '2000-01'); assert.equal(p.through, '2000-12');
+  assert.equal(p.start, null); assert.equal(p.end, null);
+  assert.equal(lineupCellLabel(p, '2000-01'), ''); assert.equal(lineupCellLabel(p, '2000-12'), '');
+  assert.match(lineupPeriod(p), /1998年12月20日/);
+  assert.match(lineupPeriod(p), /開幕日・千秋楽とは限りません/);
+  assert.equal(p.id, 'archive:2000-01');
+});
+
+test('missing, invalid and reversed archive dates keep the source text without a full-year band', () => {
+  for (const dates of [{ start_date: null }, { end_date: null }, { start_date: '2000-02-30' }, { start_date: '2018-01-01' }, { end_date: '1997-01-01' }]) {
+    const p = historyExports.archiveLineupSnapshot(2000, [historyRow(dates)]).performances[0];
+    assert.equal(p.dateUnknown, true); assert.match(lineupPeriod(p), /月別の期間は未確認/);
+    assert.match(p.note, /通算の期間/);
+  }
+  const nationwide = historyExports.archiveLineupSnapshot(2000, [historyRow({ archive_venues: { name: '全国', venue_type: '全国公演' }, theater: '大阪、広島、福岡' })]).performances;
+  assert.equal(nationwide.length, 1); // 全国の各都市へ期間を複製しない。
+  assert.equal(nationwide[0].area, '全国公演');
+  assert.equal(historyExports.archiveLineupSnapshot(2026, []).performances.length, 0);
+});
+
+function historyRoute(db) {
+  const result = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(require.resolve('../app/api/lineup/history/route.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, { exports: result, Response, URL, require: (id) => {
+    if (id === '@/lib/supabase/server') return { createClient: async () => db };
+    if (id === '@/lib/lineup') return exportsForTest;
+    if (id === '@/lib/lineup-history') return historyExports;
+    throw new Error(`Unexpected import: ${id}`);
+  } });
+  return result.GET;
+}
+
+test('history API reads all pages for a year, reports DB failure, and rejects invalid years', async () => {
+  const ranges = [];
+  let failing = false;
+  const db = { from: (table) => {
+    assert.equal(table, 'archive_runs');
+    const query = { select: () => query, eq: (key, value) => { assert.equal(key, 'year'); assert.equal(value, 2000); return query; }, order: () => query,
+      range: async (from, through) => { ranges.push([from, through]); return failing ? { data: null, error: { code: '42501' } } : { data: Array.from({ length: from === 0 ? 1000 : 1 }, (_, i) => historyRow({ perf_key: `2000-${from + i}` })), error: null }; } };
+    return query;
+  } };
+  const get = historyRoute(db);
+  const response = await get(new Request('https://test/api/lineup/history?year=2000'));
+  assert.equal(response.status, 200); assert.equal((await response.json()).performances.length, 1001);
+  assert.deepEqual(ranges, [[0, 999], [1000, 1999]]);
+  failing = true;
+  assert.equal((await get(new Request('https://test/api/lineup/history?year=2000'))).status, 503);
+  for (const year of ['NaN', '2000.1', '1800', '9999', '']) assert.equal((await get(new Request(`https://test/api/lineup/history?year=${year}`))).status, 400);
+});

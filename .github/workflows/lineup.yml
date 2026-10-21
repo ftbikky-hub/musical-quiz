@@ -2,9 +2,9 @@ name: Lineup checks
 on:
   push:
     branches: [main]
-    paths: ['app/lineup/**', 'components/lineup/**', 'data/shiki-lineup.json', 'lib/lineup.ts', 'public/downloads/lineup-monitor.gs', 'tests/lineup*.cjs', 'package*.json', '.github/workflows/lineup.yml']
+    paths: ['app/lineup/**', 'app/api/lineup/**', 'components/lineup/**', 'data/shiki-lineup.json', 'lib/lineup*.ts', 'public/downloads/lineup-monitor.gs', 'tests/lineup*.cjs', 'package*.json', '.github/workflows/lineup.yml']
   pull_request:
-    paths: ['app/lineup/**', 'components/lineup/**', 'data/shiki-lineup.json', 'lib/lineup.ts', 'public/downloads/lineup-monitor.gs', 'tests/lineup*.cjs', 'package*.json', '.github/workflows/lineup.yml']
+    paths: ['app/lineup/**', 'app/api/lineup/**', 'components/lineup/**', 'data/shiki-lineup.json', 'lib/lineup*.ts', 'public/downloads/lineup-monitor.gs', 'tests/lineup*.cjs', 'package*.json', '.github/workflows/lineup.yml']
 permissions:
   contents: read
 jobs:
