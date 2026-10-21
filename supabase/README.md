@@ -1,3 +1,7 @@
+# Supabase開発・DB作業
+
+新規テーブルの明示的GRANT、RLS、再構築時の検証は [permissions.md](permissions.md)、開発時の必須ルールは [AGENTS.md](AGENTS.md) を参照してください。既存DBに今回の作成SQLを再投入する必要はありません。
+
 # スケジュール機能の削除
 
 対象DBでの削除は **未実施**。この作業環境にはSQLを実行するDB接続情報・管理用認証情報がなく、設定されている公開anonキーでのREST接続もHTTP 401だったため、既存DBの実スキーマは確認できていません。

@@ -4,6 +4,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 観劇記録・アーカイブは、パスワードを使わず登録名を選んで入れます。名前の一覧はSupabaseの `profiles` テーブルです。既存記録の保持・重複登録防止・管理方法は [supabase/name-selection.md](supabase/name-selection.md) を参照してください。検証は `npm run test:members` で実行できます。
 
+Supabaseの新規テーブルは自動GRANTに依存せず、用途別の権限とRLSを同じSQLで設定します。方針・再構築の制約は [supabase/permissions.md](supabase/permissions.md)、検証は `npm run test:supabase` です。
+
 ## Getting Started
 
 First, run the development server:

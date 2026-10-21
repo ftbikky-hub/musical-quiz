@@ -11,11 +11,19 @@ create table public.archive_works (
   name text not null unique
 );
 
+-- 作成時の既定権限に依存せず、Data APIからは読み取りだけを許可。
+revoke all on table public.archive_works from public, anon, authenticated, service_role;
+grant select on table public.archive_works to anon, authenticated;
+
 create table public.archive_venues (
   id bigint generated always as identity primary key,
   name text not null unique,
   venue_type text not null  -- '専用劇場' | '一般劇場' | '全国公演'
 );
+
+-- 作成時の既定権限に依存せず、Data APIからは読み取りだけを許可。
+revoke all on table public.archive_venues from public, anon, authenticated, service_role;
+grant select on table public.archive_venues to anon, authenticated;
 
 alter table public.archive_runs
   add column work_id bigint references public.archive_works(id),
@@ -58,12 +66,12 @@ create index on public.archive_runs (work_id);
 create index on public.archive_runs (venue_id);
 create index on public.archive_runs (start_date, end_date);
 
--- RLS: 既存のarchive_*と同じく authenticated のみ(anonからは不可)
+-- RLS: 現在の名前選択方式に合わせanon/authenticatedの読み取りのみ許可
 alter table public.archive_works enable row level security;
 alter table public.archive_venues enable row level security;
 
-grant select on public.archive_works to authenticated;
-grant select on public.archive_venues to authenticated;
+grant select on public.archive_works to anon, authenticated;
+grant select on public.archive_venues to anon, authenticated;
 
 create policy "authenticated read works" on public.archive_works
   for select to authenticated using (true);
@@ -88,6 +96,8 @@ from public.archive_works w
 join public.archive_runs r on r.work_id = w.id
 group by w.id, w.name;
 
+revoke all on table public.archive_work_stats from public, anon, authenticated, service_role;
+
 create view public.archive_venue_stats with (security_invoker = true) as
 select
   v.id as venue_id,
@@ -102,6 +112,8 @@ from public.archive_venues v
 join public.archive_runs r on r.venue_id = v.id
 group by v.id, v.name, v.venue_type;
 
+revoke all on table public.archive_venue_stats from public, anon, authenticated, service_role;
+
 create view public.archive_actor_stats with (security_invoker = true) as
 select
   c.actor,
@@ -113,12 +125,14 @@ from public.archive_cast c
 join public.archive_runs r on r.perf_key = c.perf_key
 group by c.actor;
 
-grant select on public.archive_work_stats to authenticated;
-grant select on public.archive_venue_stats to authenticated;
-grant select on public.archive_actor_stats to authenticated;
+revoke all on table public.archive_actor_stats from public, anon, authenticated, service_role;
+
+grant select on public.archive_work_stats to anon, authenticated;
+grant select on public.archive_venue_stats to anon, authenticated;
+grant select on public.archive_actor_stats to anon, authenticated;
 
 -- ============================================================================
--- 集計用RPC(パラメータ付き。language sql stable、authenticatedのみ実行可)
+-- 集計用RPC(パラメータ付き。language sql stable、用途に応じanon/authenticatedに実行権限)
 -- ============================================================================
 
 create or replace function public.archive_work_year_venue_stats(p_work_id bigint)
@@ -206,12 +220,12 @@ revoke all on function public.archive_role_actor_stats(bigint, text) from public
 revoke all on function public.archive_actor_role_stats(text) from public;
 revoke all on function public.archive_venue_work_stats(bigint) from public;
 
-grant execute on function public.archive_work_year_venue_stats(bigint) to authenticated;
-grant execute on function public.archive_work_role_stats(bigint) to authenticated;
-grant execute on function public.archive_work_staff_summary(bigint) to authenticated;
-grant execute on function public.archive_role_actor_stats(bigint, text) to authenticated;
-grant execute on function public.archive_actor_role_stats(text) to authenticated;
-grant execute on function public.archive_venue_work_stats(bigint) to authenticated;
+grant execute on function public.archive_work_year_venue_stats(bigint) to anon, authenticated;
+grant execute on function public.archive_work_role_stats(bigint) to anon, authenticated;
+grant execute on function public.archive_work_staff_summary(bigint) to anon, authenticated;
+grant execute on function public.archive_role_actor_stats(bigint, text) to anon, authenticated;
+grant execute on function public.archive_actor_role_stats(text) to anon, authenticated;
+grant execute on function public.archive_venue_work_stats(bigint) to anon, authenticated;
 
 -- 追加RPC(トップページの役検索・出演者詳細のスタッフ担当一覧用)
 
@@ -248,20 +262,22 @@ $$;
 
 revoke all on function public.archive_staff_summary_by_person(text) from public;
 revoke all on function public.archive_search_roles(text) from public;
-grant execute on function public.archive_staff_summary_by_person(text) to authenticated;
+grant execute on function public.archive_staff_summary_by_person(text) to anon, authenticated;
 grant execute on function public.archive_search_roles(text) to authenticated;
 
 -- 検索ボックスの高速化用: 役の(作品,役名)一覧をまとめて取得するビュー
 -- (ILIKE部分一致は日本語の短い検索語ではpg_trgmも効かず全件スキャンになる
 --  ため、候補を一度だけ全件取得してクライアント側で絞り込む方式に変更した)
 
-create or replace view public.archive_role_index with (security_invoker = true) as
+create view public.archive_role_index with (security_invoker = true) as
 select distinct r.work_id, w.name as work_name, c.role
 from public.archive_cast c
 join public.archive_runs r on r.perf_key = c.perf_key
 join public.archive_works w on w.id = r.work_id;
 
-grant select on public.archive_role_index to authenticated;
+revoke all on table public.archive_role_index from public, anon, authenticated, service_role;
+
+grant select on public.archive_role_index to anon, authenticated;
 
 -- 長期連続公演(例: ライオンキング1998-2017)は、年ごとのarchive_runs行に
 -- 「通算の」start_date/end_dateがそのまま入っており、年別の期間が
@@ -270,7 +286,7 @@ grant select on public.archive_role_index to authenticated;
 -- その年のカレンダー年(1/1〜12/31)にクランプした実効期間を計算する。
 -- (2012年以降の実際に年単位で区切られている行には影響しない)
 
-create or replace view public.archive_runs_effective
+create view public.archive_runs_effective
 with (security_invoker = true) as
 select
   r.perf_key,
@@ -291,7 +307,9 @@ from public.archive_runs r
 join public.archive_works w on w.id = r.work_id
 left join public.archive_venues v on v.id = r.venue_id;
 
-grant select on public.archive_runs_effective to authenticated;
+revoke all on table public.archive_runs_effective from public, anon, authenticated, service_role;
+
+grant select on public.archive_runs_effective to anon, authenticated;
 
 -- fetchAllArchiveActorOptions等は.range()で1000行ずつページングしていたが、
 -- archive_castは約6.8万行あり68回の逐次リクエストになって却って遅くなった。
@@ -334,6 +352,12 @@ $$;
 revoke all on function public.archive_actor_options() from public;
 revoke all on function public.archive_staff_options() from public;
 revoke all on function public.archive_role_options() from public;
-grant execute on function public.archive_actor_options() to authenticated;
-grant execute on function public.archive_staff_options() to authenticated;
-grant execute on function public.archive_role_options() to authenticated;
+grant execute on function public.archive_actor_options() to anon, authenticated;
+grant execute on function public.archive_staff_options() to anon, authenticated;
+grant execute on function public.archive_role_options() to anon, authenticated;
+
+create policy "name selection read archive_works" on public.archive_works
+  for select to anon using (true);
+
+create policy "name selection read archive_venues" on public.archive_venues
+  for select to anon using (true);

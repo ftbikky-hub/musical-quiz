@@ -20,11 +20,22 @@ create index if not exists idx_theater_logs_user_id on theater_logs (user_id);
 -- 2. 同行者テーブル
 -- ----------------------------------------------------------------------------
 
-create table if not exists theater_log_companions (
-  log_id uuid not null references theater_logs(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  primary key (log_id, user_id)
-);
+-- 新規作成時だけACLを確定する。既存テーブルの権限は変更しない。
+do $create_table$
+begin
+  if to_regclass('public.theater_log_companions') is null then
+    create table public.theater_log_companions (
+      log_id uuid not null references theater_logs(id) on delete cascade,
+      user_id uuid not null references auth.users(id) on delete cascade,
+      primary key (log_id, user_id)
+    );
+    alter table public.theater_log_companions enable row level security;
+    revoke all on table public.theater_log_companions from public, anon, authenticated, service_role;
+    grant select on table public.theater_log_companions to anon, authenticated;
+    grant select, insert, delete on table public.theater_log_companions to service_role;
+  end if;
+end;
+$create_table$;
 
 create index if not exists idx_theater_log_companions_user_id on theater_log_companions (user_id);
 create index if not exists idx_theater_log_companions_log_id on theater_log_companions (log_id);
@@ -34,8 +45,6 @@ alter table theater_log_companions enable row level security;
 drop policy if exists "public read theater_log_companions" on theater_log_companions;
 create policy "public read theater_log_companions" on theater_log_companions for select using (true);
 
-grant select, insert, update, delete on theater_log_companions to service_role;
-grant select on theater_log_companions to anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 3. 集計RPC

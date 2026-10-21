@@ -17,25 +17,47 @@ create extension if not exists pgcrypto;
 -- 1. テーブル定義
 -- ----------------------------------------------------------------------------
 
-create table if not exists shiki_works (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  color_code text not null,              -- 例: '#0070B8'（公式パンフレット準拠）
-  official_url text,
-  sort_order int not null default 0,
-  created_at timestamptz not null default now()
-);
+-- 新規作成時だけACLを確定する。既存テーブルの権限は変更しない。
+do $create_table$
+begin
+  if to_regclass('public.shiki_works') is null then
+    create table public.shiki_works (
+      id uuid primary key default gen_random_uuid(),
+      title text not null,
+      color_code text not null,              -- 例: '#0070B8'（公式パンフレット準拠）
+      official_url text,
+      sort_order int not null default 0,
+      created_at timestamptz not null default now()
+    );
+    alter table public.shiki_works enable row level security;
+    revoke all on table public.shiki_works from public, anon, authenticated, service_role;
+    grant select on table public.shiki_works to anon, authenticated;
+    grant select on table public.shiki_works to service_role;
+  end if;
+end;
+$create_table$;
 
-create table if not exists shiki_theaters (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  region text not null,                  -- 例: 東京・舞浜・横浜 / 関西 / 全国 など
-  theater_type text not null check (theater_type in ('dedicated', 'semi_dedicated', 'tour')),
-  lat numeric,                           -- 劇場の緯度（概略値）
-  lng numeric,
-  sort_order int not null default 0,
-  created_at timestamptz not null default now()
-);
+-- 新規作成時だけACLを確定する。既存テーブルの権限は変更しない。
+do $create_table$
+begin
+  if to_regclass('public.shiki_theaters') is null then
+    create table public.shiki_theaters (
+      id uuid primary key default gen_random_uuid(),
+      name text not null,
+      region text not null,                  -- 例: 東京・舞浜・横浜 / 関西 / 全国 など
+      theater_type text not null check (theater_type in ('dedicated', 'semi_dedicated', 'tour')),
+      lat numeric,                           -- 劇場の緯度（概略値）
+      lng numeric,
+      sort_order int not null default 0,
+      created_at timestamptz not null default now()
+    );
+    alter table public.shiki_theaters enable row level security;
+    revoke all on table public.shiki_theaters from public, anon, authenticated, service_role;
+    grant select on table public.shiki_theaters to anon, authenticated;
+    grant select on table public.shiki_theaters to service_role;
+  end if;
+end;
+$create_table$;
 
 -- ----------------------------------------------------------------------------
 -- 2. Row Level Security（読み取り専用の公開データとして扱う）
@@ -51,7 +73,7 @@ drop policy if exists "public read shiki_theaters" on shiki_theaters;
 create policy "public read shiki_theaters" on shiki_theaters for select using (true);
 
 -- 書き込みポリシーは意図的に用意していません（このアプリはanonキーでの読み取り専用）。
--- データ投入・更新は Supabase ダッシュボード／サービスロールキー経由で行ってください。
+-- データ投入・更新はSupabase SQL Editorで行います。アプリのservice_roleもこの2表はSELECTのみです。
 
 -- ----------------------------------------------------------------------------
 -- 3. シードデータ：演目マスタ（11演目、公式パンフレット準拠のテーマカラー）

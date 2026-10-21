@@ -24,6 +24,10 @@ create table public.archive_cast (
   unique (year, run_name, role, actor)
 );
 
+-- 作成時の既定権限に依存せず、Data APIからは読み取りだけを許可。
+revoke all on table public.archive_cast from public, anon, authenticated, service_role;
+grant select on table public.archive_cast to authenticated;
+
 alter table public.archive_cast enable row level security;
 
 create index archive_cast_work_role_idx on public.archive_cast (work, role);
