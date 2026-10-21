@@ -144,3 +144,7 @@
   .home *, .home *::before { transition: none; }
   .room:hover, .primaryLink:hover { transform: none; }
 }
+
+.lineupEntrance { display: flex; align-items: center; gap: 23px; padding: 26px; margin-bottom: 22px; border: 1px solid #b4a47c; background: #f0eddf; color: var(--ink); text-decoration: none; }
+.lineupEntrance > div { flex: 1; min-width: 0; }.lineupEntrance h3 { font: 23px/1.6 var(--serif); margin: 8px 0; }.lineupEntrance p { font-size: 11px; line-height: 1.9; color: #697068; margin: 0; }.lineupEntrance:hover { background: #eae6d5; }
+@media (max-width: 600px) { .lineupEntrance { padding: 20px 17px; gap: 12px; }.lineupEntrance h3 { font-size: 19px; }.lineupEntrance .roomIcon { display: none; } }

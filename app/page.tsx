@@ -79,6 +79,11 @@ export default function Home() {
                 <div><p className={styles.sectionEyebrow}>YOUR PERSONAL PROGRAMME</p><h2 id="program-title">今日の余韻は、どこから。</h2></div>
                 <p className={styles.sectionIntro}>調べる、残す、もう一度出会う。<br />いまの気分で、お好きな扉から。</p>
               </div>
+              <Link href="/lineup" className={styles.lineupEntrance}>
+                <span className={styles.roomIcon}><Icon name="ticket" /></span>
+                <div><span className={styles.roomEnglish}>THE NEXT CURTAIN CALL</span><h3>次の観劇を、見つけよう。</h3><p>作品と月で見渡す上演予定。気になる公演を、お気に入りに。</p></div>
+                <span className={styles.roomArrow}><Arrow diagonal /></span>
+              </Link>
               <div className={styles.roomGrid}>
                 {rooms.map((room) => (
                   <Link href={room.href} key={room.href} className={styles.room}>

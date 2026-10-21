@@ -6,6 +6,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 Supabaseの新規テーブルは自動GRANTに依存せず、用途別の権限とRLSを同じSQLで設定します。方針・再構築の制約は [supabase/permissions.md](supabase/permissions.md)、検証は `npm run test:supabase` です。
 
+上演予定ページ `/lineup` の表示・お気に入り・スナップショット更新方法は [docs/lineup.md](docs/lineup.md) を参照してください。今回は自動更新・DB追加は行いません。
+
 ## Getting Started
 
 First, run the development server:

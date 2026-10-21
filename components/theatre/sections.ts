@@ -5,5 +5,6 @@ export const sections = [
   { id: "films", href: "/youtube", label: "公式映像", english: "OFFICIAL FILMS", number: "04", note: "あの旋律、あの一瞬。映像の向こうに、また舞台の光がともる。" },
   { id: "quiz", href: "/quiz.html", label: "クイズ", english: "A LITTLE ENCORE", number: "05", note: "好きな舞台のことなら、もう少し。小さなアンコールを楽しもう。" },
   { id: "collection", href: "/media", label: "コレクション", english: "MY COLLECTION", number: "06", note: "好きなものを、好きなだけ。何度でも開きたくなる、自分だけの棚。" },
+  { id: "lineup", href: "/lineup", label: "上演予定", english: "THE NEXT CURTAIN CALL", number: "07", note: "次の観劇を、見つけよう。楽しみな舞台が、またひとつ。" },
 ] as const;
 export type SectionId = (typeof sections)[number]["id"] | "account";

@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test:members": "node tests/journal-members.test.cjs",
     "test:archive": "node tests/archive-search.test.cjs",
-    "test:supabase": "node tests/supabase-permissions.test.mjs"
+    "test:supabase": "node tests/supabase-permissions.test.mjs",
+    "test:lineup": "node tests/lineup.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

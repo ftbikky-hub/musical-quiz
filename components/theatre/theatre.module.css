@@ -106,3 +106,5 @@
 .archiveEntry { position: relative; min-height: 130px; border-top: 2px solid #b5a077; }
 .archiveEntry :global(h2) { font-size: 18px; font-weight: 600; }
 .archiveEntry > :global(p) { line-height: 1.9; }
+
+@media (max-width: 680px) { .navigation a:last-child:nth-child(3n + 1) { grid-column: 1 / -1; } }
