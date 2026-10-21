@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { matchesArchiveSearch } from "@/lib/archive-search";
 import { lineupMonths, lineupMonthText, lineupDateText, lineupPeriod, lineupCellLabel, parseLineupFavorites, type LineupPerformance, type LineupSnapshot } from "@/lib/lineup";
@@ -75,7 +76,7 @@ export function LineupPlanner({ snapshot }: { snapshot: LineupSnapshot }) {
           </div></>}
       <div className={styles.notes} id="lineup-reading-note"><strong>この表の読み方</strong><p>帯は上演予定期間の目安です。各月のすべての日に公演があるとは限りません。斜線は日付未発表の予定、「…」は終演日未発表を示します。空欄は、この一覧で確認できない期間です。帯の末尾が千秋楽とは限りません。</p></div>
     </section>
-    <section className={styles.source} aria-label="データの出典"><div><strong>公式情報から整理したスナップショット</strong><p>元データ確認日：{lineupDateText(snapshot.checked)} · 自動更新は未実装</p><p>お気に入りはこのブラウザに保存されます。試作サイトの登録は自動移行されません。</p></div><a href={snapshot.source} target="_blank" rel="noopener noreferrer">最新情報を公式で確認 ↗</a></section>
+    <section className={styles.source} aria-label="データの出典"><div><strong>公式情報から整理したスナップショット</strong><p>元データ確認日：{lineupDateText(snapshot.checked)} · 自動更新は未実装</p><p>お気に入りはこのブラウザに保存されます。試作サイトの登録は自動移行されません。</p></div><div className={styles.sourceLinks}><a href={snapshot.source} target="_blank" rel="noopener noreferrer">最新情報を公式で確認 ↗</a><Link href="/lineup/notifications">公式の変更をGmailで受け取る設定 ↗</Link></div></section>
     <dialog ref={dialog} className={styles.dialog} aria-labelledby="lineup-detail-title" onClose={() => setSelected(null)} onClick={(event) => {
       if (event.target !== event.currentTarget) return;
       const box = event.currentTarget.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) event.currentTarget.close();
