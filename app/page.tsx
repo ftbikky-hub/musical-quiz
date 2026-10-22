@@ -84,6 +84,11 @@ export default function Home() {
                 <div><span className={styles.roomEnglish}>THE NEXT CURTAIN CALL</span><h3>次の観劇を、見つけよう。</h3><p>作品と月で見渡す上演予定。気になる公演を、お気に入りに。</p></div>
                 <span className={styles.roomArrow}><Arrow diagonal /></span>
               </Link>
+              <Link href="/plans" className={styles.lineupEntrance}>
+                <span className={styles.roomIcon}><Icon name="journal" /></span>
+                <div><span className={styles.roomEnglish}>MY UPCOMING STAGES</span><h3>楽しみが、待っている。</h3><p>私の観劇・コンサートの予定と、抽選締め切り・当落発表をひとつの手帳に。</p></div>
+                <span className={styles.roomArrow}><Arrow diagonal /></span>
+              </Link>
               <div className={styles.roomGrid}>
                 {rooms.map((room) => (
                   <Link href={room.href} key={room.href} className={styles.room}>

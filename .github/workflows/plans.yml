@@ -1,0 +1,21 @@
+name: Personal plans checks
+on:
+  push:
+    branches: [main]
+    paths: ['app/plans/**', 'app/api/plans/**', 'components/plans/**', 'lib/plans.ts', 'lib/plan-calendar-import.ts', 'lib/personal-plan-store.ts', 'tests/plans.test.cjs', 'package*.json', '.github/workflows/plans.yml']
+  pull_request:
+    paths: ['app/plans/**', 'app/api/plans/**', 'components/plans/**', 'lib/plans.ts', 'lib/plan-calendar-import.ts', 'lib/personal-plan-store.ts', 'tests/plans.test.cjs', 'package*.json', '.github/workflows/plans.yml']
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run test:plans

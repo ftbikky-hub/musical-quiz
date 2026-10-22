@@ -11,6 +11,7 @@ const sources = ['seed.sql', 'theater-log.sql', 'theater-log-social.sql',
   'archive-runs-cast-staff.sql', 'archive-works-venues.sql'];
 const manual = ['archive-cast.sql', 'archive-name-selection-read.sql',
   'check-schedule-dependencies.sql', 'remove-schedule.sql', 'check-data-api-privileges.sql'];
+const reviewedMigrations = ['migrations/20261022000000_personal_plans.sql'];
 const roles = ['anon', 'authenticated', 'service_role'];
 const operations = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
 const readonly = { anon: ['SELECT'], authenticated: ['SELECT'], service_role: [] };
@@ -68,11 +69,12 @@ async function assertACL(db, tables) {
 test('every SQL and future migration must be registered for permission review', async () => {
   const files = (await readdir(root)).filter((name) => name.endsWith('.sql')).sort();
   assert.deepEqual(files, [...sources, ...manual].sort());
+  assert.equal(await readFile(path.join(root, '../public/downloads/personal-plans-setup.sql'), 'utf8'), await readFile(path.join(root, reviewedMigrations[0]), 'utf8'));
   const migrations = await readdir(path.join(root, 'migrations')).catch((error) => {
     if (error.code === 'ENOENT') return [];
     throw error;
   });
-  assert.deepEqual(migrations.filter((name) => name.endsWith('.sql')), [],
+  assert.deepEqual(migrations.filter((name) => name.endsWith('.sql')).map(name => 'migrations/' + name).sort(), reviewedMigrations.slice().sort(),
     '新しいmigrationを検証順序と期待ACLに登録してください。未検証のまま通さないこと。');
 });
 
@@ -163,5 +165,29 @@ test('historical archive_cast retains authenticated-only read access', async () 
   try {
     await db.exec(await sql('archive-cast.sql'));
     await assertACL(db, { archive_cast: { anon: [], authenticated: ['SELECT'], service_role: [] } });
+  } finally { await db.close(); }
+});
+
+for (const oldDefaults of [false, true]) test(`personal plans deny public access and preserve existing ACLs (old defaults: ${oldDefaults})`, async () => {
+  const db = await fixture(oldDefaults);
+  try {
+    for (const file of reviewedMigrations) await db.exec(await sql(file));
+    await assertACL(db, { personal_plans: { anon: [], authenticated: [], service_role: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] } });
+    await asRole(db, 'service_role', `insert into personal_plans(id,user_id,title,kind,date,source_uid) values ('${logId}','${uid}','観劇予定','theatre','2026-12-01','google-uid')`);
+    for (const role of ['anon','authenticated']) {
+      await assert.rejects(asRole(db, role, 'select * from personal_plans'), /permission denied/);
+      await assert.rejects(asRole(db, role, `insert into personal_plans(user_id,title,kind,date) values ('${uid}','不可','concert','2026-12-01')`), /permission denied/);
+      await assert.rejects(asRole(db, role, 'delete from personal_plans'), /permission denied/);
+    }
+    await asRole(db,'service_role', `update personal_plans set status='confirmed' where id='${logId}'`);
+    assert.equal((await asRole(db,'service_role', 'select status from personal_plans')).rows[0].status,'confirmed');
+    await assert.rejects(asRole(db,'service_role', `insert into personal_plans(user_id,title,kind,date,source_uid) values ('${uid}','二重','theatre','2026-12-01','google-uid')`), /duplicate key/);
+    await db.exec('grant select on personal_plans to authenticated');
+    // ACLがあっても公開Policyを作らないためRLSは行を返さない。
+    assert.equal((await asRole(db, 'authenticated','select * from personal_plans')).rows.length,0);
+    const before=(await db.query("select relacl::text as acl from pg_class where oid='personal_plans'::regclass")).rows;
+    for (const file of reviewedMigrations) await db.exec(await sql(file));
+    assert.deepEqual((await db.query("select relacl::text as acl from pg_class where oid='personal_plans'::regclass")).rows,before);
+    await asRole(db, 'service_role', `delete from personal_plans where id='${logId}'`);
   } finally { await db.close(); }
 });

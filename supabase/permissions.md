@@ -78,3 +78,7 @@ dumpのGRANT・RLS・Policy・FK・関数・ビュー・シーケンスを確認
 ## 既存DBの読み取り専用監査
 
 `check-data-api-privileges.sql` はSQL Editorで実行できる。表ごとの3ロールの実効権限、RLS、Policy、シーケンスUSAGEだけを表示し、データ・権限を変更しない。既存表の権限変更が必要かは、この結果と実際の用途を比較して判断する。
+
+## 個人予定の追加テーブル（2026-10-22）
+
+`migrations/20261022000000_personal_plans.sql` は既存の `auth.users` だけを参照する独立した追加DDL。全体baselineを推測するものではない。`personal_plans` の新規作成時にRLS・明示ACLを確定し、公開2ロールにはアクセスを許可せず、サーバーservice_roleだけにSELECT/INSERT/UPDATE/DELETEを付与する。名前選択はauth.uid()でないため、本人用Policyを仮定せず全APIで選択名のIDに絞る。既存表のACLは変更しない。運用DBへの実行は未実施。詳細は [個人予定](../docs/personal-plans.md)。

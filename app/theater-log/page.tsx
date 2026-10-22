@@ -57,7 +57,8 @@ export default async function TheaterLogPage({
         忘れたくない歌声も、幕が下りたあとの気持ちも。あなたが出会った舞台を、一ページずつ残していきましょう。
       </PageHeading>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
+        <Link href="/plans" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">これからの予定を見る ↗</Link>
         <Link
           href="/theater-log/new"
           className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm text-center shrink-0"
