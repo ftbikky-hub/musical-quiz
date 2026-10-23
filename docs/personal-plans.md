@@ -8,7 +8,7 @@
 
 `personal_plans` は既存の観劇記録と違い公開Data APIのSELECTを付与しない。全操作をサーバーのservice_role経由とし、GET/PATCH/DELETEのクエリは必ず選択名のuser_idで絞る。POSTは入力のuser_id/idを受け付けずサーバーで所有者を指定。JSONの許可フィールドを正規化し、日付・時刻・URL・長さ・状態を検証。更新系は同一Originを必須とする。取得はprivate/no-storeで、1000件ずつ最後まで読む。GoogleのOAuthトークンやカレンダー共有URLは保存しない。
 
-## 保存用SQL（本番実行は未実施）
+## 保存用SQLと本番確認
 
 既存スキーマは変更せず、既知の `auth.users(id)` に関連する追加テーブルのみを作る。
 
@@ -18,7 +18,7 @@
 - 新規作成時にRLSを有効にし、既定ACLを取り除きservice_roleにSELECT/INSERT/UPDATE/DELETEのみ明示。anon/authenticated/PUBLICへの権限・Policyは作らない。既存表があればACLを書き換えない。UUID採番なのでシーケンス権限は不要。
 - `SUPABASE_SERVICE_ROLE_KEY` は既存のサーバー用設定を利用。ブラウザには渡さない。
 
-作業環境にはDB管理接続もサービス用キーもなく、実DBへのテーブル作成・本番の保存確認は未実施。既存アプリの管理用キーを用いるVercel上で、SQL実行後に確認する必要がある。リポジトリ全体のbaselineは未完成で、この追加migrationだけで全DBをresetできるとは扱わない。
+2026-10-23にSupabaseの管理連携で本番を確認。personal_plansは既に作成済みで11件の保存があり、項目・制約・RLS・公開アクセス拒否・service_roleのCRUD権限・service_roleでの読み取りを確認した。既存表の作り直しや権限変更はしていない。リポジトリ全体のbaselineは未完成で、この追加migrationだけで全DBをresetできるとは扱わない。
 
 ## 公演と抽選
 
@@ -36,7 +36,7 @@
 - 元UIDを `source_uid` に保存し、(user_id,source_uid) の一意制約とignoreDuplicatesで再取り込みをスキップする。保存後の編集内容を上書きしない。Google側での変更・削除は自動反映されず、登録済み予定をこのページで編集する。
 - 各項目にはGoogleカレンダーの追加画面へのリンクと`.ics`出力もある。追加リンクは利用者がGoogle側で保存するまで書き込まない。出力は日本語・改行のエスケープとUTF-8の75オクテット折返しに対応。未登録の終了時刻は作らない。
 
-OAuthによる継続的な自動同期は未実装。ChatGPTのGoogle連携の権限をサイトが継承することはない。予定・締め切り・発表のメール通知も未実装で、上演予定の公式変更通知とは別機能。
+Google Apps Scriptによる継続的な一方向同期を追加した（下記）。OAuthトークンをサイトへ保存する方式は使わない。ChatGPTのGoogle連携の権限をサイトが継承することはない。予定・締め切り・発表のメール通知も未実装で、上演予定の公式変更通知とは別機能。
 
 ## 検証
 
@@ -45,3 +45,23 @@ OAuthによる継続的な自動同期は未実装。ChatGPTのGoogle連携の�
 `npm run test:supabase`：追加migrationを実際のPostgreSQL（PGlite）で実行し、自動GRANTの有無両方で公開アクセス拒否・service_roleのCRUD・RLS・既存ACL維持を検証。
 
 ブラウザは実コンポーネント＋APIフィクスチャで4幅の表示、入力・編集、絞り込み、選択取り込み・重複、設定未完了の案内と再試行を検証。本番DBに利用者の代わりのテスト予定は作成しない。
+
+## Googleカレンダーの自動更新
+
+`/plans/calendar`。利用者が選んだ1つのカレンダーを、Google Apps Scriptから15分ごとを目安に送信する。Google側の初回認可・実行は利用者の操作が必要。ChatGPT上のGoogle連携を継承したものではない。サイトへの反映後、予定一覧も毎分・画面復帰時に再取得する。
+
+- 通常はprimary＋キーワード（観劇、舞台、コンサート、ライブ、締切、当落、主要作品など）の一致。専用カレンダーならallを明示選択できる。Google側の読み取りは `calendar.readonly`。appsscript.jsonで読み取り専用と外部送信・トリガーのスコープだけを指定。メール送信なし。
+- 対象期間は昨日から約2年先、1回最大500件。繰り返しは対象外。読み取れない・不正なデータ・件数超過はスナップショット全体を中止し、部分的な削除を反映しない。
+- 接続コードは32バイトの乱数。サイトにはSHA-256のハッシュのみを保存。コードの再表示・URLへの埋め込み・ログ出力なし。発行時の画面にだけ一度表示する。180日で失効し、再発行は旧コードを無効にする。GET/発行/停止には名前選択と同一Origin（変更系）が必要。現在の名前選択は本人認証ではないので、信頼する個人・知人の運用を継続する。
+- `personal_calendar_connections` と `personal_calendar_items` はservice_roleのSELECT/INSERT/UPDATEのみ。RLS有効・公開ロール権限なし・公開Policyなし。関数 `sync_personal_calendar` はsecurity invoker・空のsearch_path・service_roleのみEXECUTE。既存personal_plansのACLや構造を変更しない。
+- `POST /api/plans/calendar/sync` はBearer専用。所有者IDはペイロードから受け取らない。カレンダー、期間、時刻、件数、完全取得のフラグと予定を検証する。ハッシュを渡してDB関数内で再認可・接続ロック・一括反映を実施し、停止／再発行との競合や古い実行の後着を防ぐ。
+- 非繰り返しの元iCalUIDを `ical:UID` として使い、既存のICS取り込み済み予定は同じ行を初回に引き継ぐ。初回引き継ぎで既存項目は上書きしない。2回目以降、Googleのタイトル・日時・会場を、前回のGoogle値と同じままの項目にのみ反映する。サイトで変更した項目・状態・メモ・作品ID・締め切り／発表の関連日付は保持する。
+- Googleの対象一覧で見つからない未来・直近日の同期管理済み予定をキャンセル表示にする。元データは削除しない。過去に終わった記録・手入力・別利用者・別カレンダーの記録には適用しない。自動キャンセル後にサイトで変更されていなければ、Googleへ再登場したときに以前の状態へ戻す。サイトで同期対象の行自体を削除すると次回再作成される。
+- 一度に10件超かつ送信件数の半数超が消えた場合は全反映を保留。取得事故や対象カレンダーの誤変更から大量のキャンセルを防ぐ。Google側の削除以外にも、対象期間外への移動やキーワード対象外への改名は「見つからない」に含まれる。
+- Apps Scriptは初回同期が成功してから定期トリガーを作成。既存の公式変更メール通知など別ハンドラーは保持。401（失効／停止）を受けたら自分の同期トリガーを停止する。サイトの最終同期時刻とGoogleの実行ログ「設定完了」の両方を確認して運用開始とする。Google側の実認可・初回同期は未実施で、自動更新が既に動作中とは扱わない。
+
+本番追加migrationはSupabase管理連携で発行された `20261023091936_personal_calendar_sync`。同一SQLをリポジトリへ保存。ローカルCLIは設定ディレクトリが読み取り専用のため起動できず、MCPのapply_migrationを使用した。ローカル／本番をresetしていない。
+
+`npm run test:calendar-sync` は実PostgreSQL（PGlite）で新旧自動GRANT下のACL/RLS、既存ICS引き継ぎ、変更・手動項目保護、別所有者、失敗時ロールバック、削除／復元、大量削除保留、失効を確認する。公開Apps ScriptそのものをVMで実行し、対象だけの送信、15分トリガーの再設定、他トリガー保持、失敗時の停止も確認。APIのBearer、期限、スコープと所有者偽装を検証。ブラウザは4幅で一度だけのコード表示、読み取り専用マニフェスト、初回待ち／同期確認、停止、再読込を確認する。
+
+Supabaseのアドバイザーの[RLS Enabled No Policy](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)はこの追加2表でもINFO表示になる。公開アクセスを許可しないservice_role専用設計のため意図した状態で、公開Policyを追加して警告を消さない。本番でRLS、公開ロールのSELECT不可、service_roleのSELECT/INSERT/UPDATEと関数EXECUTE、DELETE不可を確認済み。接続はまだ0件で、Google側の初回実行は利用者の設定待ち。保存済みの予定11件は変更していない。

@@ -16,10 +16,18 @@ export function PlansDashboard({ today: serverToday }: { today: string }) {
   const [refresh, setRefresh] = useState(0), [filter, setFilter] = useState<PlanKind | "all">("all"), [query, setQuery] = useState(""), [past, setPast] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/plans", { cache: "no-store", signal: controller.signal }).then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "予定を読み込めませんでした。"); if (!controller.signal.aborted) { setPlans(data); setError(""); } })
-      .catch(e => { if (!controller.signal.aborted) setError(e.message || "予定を読み込めませんでした。"); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
+    let version = 0;
+    async function load() {
+      const current = ++version;
+      try {
+        const response = await fetch("/api/plans", { cache: "no-store", signal: controller.signal });
+        const data = await response.json(); if (!response.ok) throw new Error(data.error || "予定を読み込めませんでした。");
+        if (!controller.signal.aborted && current === version) { setPlans(data); setError(""); }
+      } catch (e) { if (!controller.signal.aborted && current === version) setError(e instanceof Error ? e.message : "予定を読み込めませんでした。"); }
+      finally { if (!controller.signal.aborted && current === version) setLoading(false); }
+    }
+    void load(); const timer = setInterval(load, 60_000); window.addEventListener("focus", load);
+    return () => { controller.abort(); clearInterval(timer); window.removeEventListener("focus", load); };
   }, [refresh]);
   function reload() { setLoading(true); setError(""); setRefresh(n => n + 1); }
   const upcoming = agendaEntries(plans, today);
@@ -28,7 +36,7 @@ export function PlansDashboard({ today: serverToday }: { today: string }) {
   const list = agendaEntries(plans, today, past).filter(e => (filter === "all" || e.kind === filter) && `${e.plan.title} ${e.plan.venue} ${e.plan.memo}`.normalize("NFKC").toLowerCase().includes(query.normalize("NFKC").trim().toLowerCase()));
   const groups = [...new Set(list.map(e => e.date.slice(0, 7)))];
   return <>
-    <div className={styles.topActions}><Link href="/plans/new" className={styles.primary}>＋ 予定を追加する</Link><a href="#calendar-import">Googleカレンダーから取り込む ↓</a><Link href="/theater-log">観劇の思い出を見る ↗</Link></div>
+    <div className={styles.topActions}><Link href="/plans/new" className={styles.primary}>＋ 予定を追加する</Link><Link href="/plans/calendar">Googleカレンダーの自動更新を設定 ↗</Link><a href="#calendar-import">ファイルから取り込む ↓</a><Link href="/theater-log">観劇の思い出を見る ↗</Link></div>
     {loading ? <p role="status" className={styles.notice}>予定を読み込んでいます…</p> : error ? <div className={styles.empty} role="alert"><h2>予定を読み込めませんでした。</h2><p>{error}</p><button type="button" onClick={reload}>もう一度読み込む</button>{error.includes("テーブル") && <p>サイト管理者向け：<a href="/downloads/personal-plans-setup.sql" download>初回設定用SQL</a></p>}</div>
       : <>
         <section className={styles.highlights} aria-label="これからのお楽しみと締め切り"><div className={styles.nextCard}><p className={styles.eyebrow}>YOUR NEXT APPLAUSE</p><span className={styles.nextLabel}>次のお楽しみ</span>{next ? <><h2>{next.plan.title}</h2><p>{next.date.slice(0, 4)}年 {planDateLabel(next.date)} · {next.time || "時刻未登録"}</p><p>{next.plan.venue || "会場未登録"}</p><Link href={`/plans/${next.plan.id}/edit`}>予定を確かめる ↗</Link></> : <><h2>次の一幕を、楽しみに。</h2><p>観たい舞台やコンサートを、手帳に加えましょう。</p></>}</div>

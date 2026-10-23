@@ -1,14 +1,8 @@
 import ICAL from "ical.js";
-import { normalizePlan, japanDate, type PlanInput, type PlanKind } from "./plans";
+import { normalizePlan, japanDate, inferPlanKind, type PlanInput } from "./plans";
 
 export interface CalendarCandidate { key: string; plan: PlanInput; suggested: boolean }
 export interface CalendarImport { candidates: CalendarCandidate[]; skipped: number; recurring: number }
-export function inferPlanKind(title: string): { kind: PlanKind; suggested: boolean } {
-  if (/当落|抽選結果|結果発表/.test(title)) return { kind: "result", suggested: true };
-  if (/締め切り|締切|申込期限|申し込み期限/.test(title)) return { kind: "deadline", suggested: true };
-  if (/コンサート|concert|billboard|リサイタル|演奏会|ライブ|オーケストラ|交響楽|フィルハーモニー/i.test(title)) return { kind: "concert", suggested: true };
-  return { kind: "theatre", suggested: /観劇|劇団四季|ミュージカル|舞台|四季劇場|ノートルダム|ウィキッド|ライオンキング|アナと雪|アラジン|キャッツ|オペラ座|バック・トゥ・ザ/.test(title) };
-}
 export function parsePlanCalendar(text: string): CalendarImport {
   if (new TextEncoder().encode(text).length > 2_000_000) throw new Error("2MB以下の.icsファイルを選んでください。");
   ICAL.TimezoneService.reset();

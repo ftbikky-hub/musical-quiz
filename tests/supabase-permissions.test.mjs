@@ -11,7 +11,7 @@ const sources = ['seed.sql', 'theater-log.sql', 'theater-log-social.sql',
   'archive-runs-cast-staff.sql', 'archive-works-venues.sql'];
 const manual = ['archive-cast.sql', 'archive-name-selection-read.sql',
   'check-schedule-dependencies.sql', 'remove-schedule.sql', 'check-data-api-privileges.sql'];
-const reviewedMigrations = ['migrations/20261022000000_personal_plans.sql'];
+const reviewedMigrations = ['migrations/20261022000000_personal_plans.sql', 'migrations/20261023091936_personal_calendar_sync.sql'];
 const roles = ['anon', 'authenticated', 'service_role'];
 const operations = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
 const readonly = { anon: ['SELECT'], authenticated: ['SELECT'], service_role: [] };
@@ -171,7 +171,7 @@ test('historical archive_cast retains authenticated-only read access', async () 
 for (const oldDefaults of [false, true]) test(`personal plans deny public access and preserve existing ACLs (old defaults: ${oldDefaults})`, async () => {
   const db = await fixture(oldDefaults);
   try {
-    for (const file of reviewedMigrations) await db.exec(await sql(file));
+    for (const file of reviewedMigrations.filter(f => f.endsWith('_personal_plans.sql'))) await db.exec(await sql(file));
     await assertACL(db, { personal_plans: { anon: [], authenticated: [], service_role: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] } });
     await asRole(db, 'service_role', `insert into personal_plans(id,user_id,title,kind,date,source_uid) values ('${logId}','${uid}','観劇予定','theatre','2026-12-01','google-uid')`);
     for (const role of ['anon','authenticated']) {
@@ -186,7 +186,7 @@ for (const oldDefaults of [false, true]) test(`personal plans deny public access
     // ACLがあっても公開Policyを作らないためRLSは行を返さない。
     assert.equal((await asRole(db, 'authenticated','select * from personal_plans')).rows.length,0);
     const before=(await db.query("select relacl::text as acl from pg_class where oid='personal_plans'::regclass")).rows;
-    for (const file of reviewedMigrations) await db.exec(await sql(file));
+    for (const file of reviewedMigrations.filter(f => f.endsWith('_personal_plans.sql'))) await db.exec(await sql(file));
     assert.deepEqual((await db.query("select relacl::text as acl from pg_class where oid='personal_plans'::regclass")).rows,before);
     await asRole(db, 'service_role', `delete from personal_plans where id='${logId}'`);
   } finally { await db.close(); }

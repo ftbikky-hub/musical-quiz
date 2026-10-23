@@ -81,4 +81,8 @@ dumpのGRANT・RLS・Policy・FK・関数・ビュー・シーケンスを確認
 
 ## 個人予定の追加テーブル（2026-10-22）
 
-`migrations/20261022000000_personal_plans.sql` は既存の `auth.users` だけを参照する独立した追加DDL。全体baselineを推測するものではない。`personal_plans` の新規作成時にRLS・明示ACLを確定し、公開2ロールにはアクセスを許可せず、サーバーservice_roleだけにSELECT/INSERT/UPDATE/DELETEを付与する。名前選択はauth.uid()でないため、本人用Policyを仮定せず全APIで選択名のIDに絞る。既存表のACLは変更しない。運用DBへの実行は未実施。詳細は [個人予定](../docs/personal-plans.md)。
+`migrations/20261022000000_personal_plans.sql` は既存の `auth.users` だけを参照する独立した追加DDL。全体baselineを推測するものではない。`personal_plans` の新規作成時にRLS・明示ACLを確定し、公開2ロールにはアクセスを許可せず、サーバーservice_roleだけにSELECT/INSERT/UPDATE/DELETEを付与する。名前選択はauth.uid()でないため、本人用Policyを仮定せず全APIで選択名のIDに絞る。既存表のACLは変更しない。2026-10-23の管理接続時に既に作成済みと確認。項目・RLS・ACL・11件の読み取りを確認した。詳細は [個人予定](../docs/personal-plans.md)。
+
+## カレンダー自動更新（2026-10-23）
+
+`migrations/20261023091936_personal_calendar_sync.sql` をSupabaseのapply_migrationで適用した。サーバー発行のmigration番号と同じSQLを保存。接続ハッシュ・同期管理の追加2表はRLS有効、公開ロール権限なし、service_roleのみSELECT/INSERT/UPDATE。sync_personal_calendar関数はsecurity invokerかつservice_roleのみEXECUTEで、トークンを再検証して一括反映する。既存テーブルのACLは変更しない。全体baselineが完成したわけではなく、CLIのdb resetは未実施。

@@ -79,3 +79,10 @@ export function planIcs(entries: AgendaEntry[]): string {
   // RFC5545: UTF-8で75オクテットを超える行を折り返す。
   return lines.map(line => { let out = "", bytes = 0; for (const ch of line) { const size = new TextEncoder().encode(ch).length; if (bytes + size > 75) { out += "\r\n "; bytes = 1; } out += ch; bytes += size; } return out; }).join("\r\n") + "\r\n";
 }
+
+export function inferPlanKind(title: string): { kind: PlanKind; suggested: boolean } {
+  if (/当落|抽選結果|結果発表/.test(title)) return { kind: "result", suggested: true };
+  if (/締め切り|締切|申込期限|申し込み期限/.test(title)) return { kind: "deadline", suggested: true };
+  if (/コンサート|concert|billboard|リサイタル|演奏会|ライブ|オーケストラ|交響楽|フィルハーモニー/i.test(title)) return { kind: "concert", suggested: true };
+  return { kind: "theatre", suggested: /観劇|劇団四季|ミュージカル|舞台|四季劇場|ノートルダム|ウィキッド|ライオンキング|アナと雪|アラジン|キャッツ|オペラ座|バック・トゥ・ザ/.test(title) };
+}

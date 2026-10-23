@@ -9,10 +9,11 @@
     "lint": "eslint",
     "test:members": "node tests/journal-members.test.cjs",
     "test:archive": "node tests/archive-search.test.cjs",
-    "test:supabase": "node tests/supabase-permissions.test.mjs",
+    "test:supabase": "node tests/supabase-permissions.test.mjs && node tests/calendar-sync.test.mjs",
     "test:lineup": "node tests/lineup.test.cjs",
     "test:lineup-notifications": "node tests/lineup-notifications.test.cjs",
-    "test:plans": "node tests/plans.test.cjs"
+    "test:plans": "node tests/plans.test.cjs",
+    "test:calendar-sync": "node tests/calendar-sync.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

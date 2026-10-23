@@ -2,9 +2,9 @@ name: Personal plans checks
 on:
   push:
     branches: [main]
-    paths: ['app/plans/**', 'app/api/plans/**', 'components/plans/**', 'lib/plans.ts', 'lib/plan-calendar-import.ts', 'lib/personal-plan-store.ts', 'tests/plans.test.cjs', 'package*.json', '.github/workflows/plans.yml']
+    paths: ['app/plans/**', 'app/api/plans/**', 'components/plans/**', 'lib/plans.ts', 'lib/calendar-sync.ts', 'public/downloads/personal-calendar-sync.gs', 'public/downloads/personal-calendar-appsscript.json', 'tests/calendar-sync.test.mjs', 'supabase/migrations/*personal_calendar_sync.sql', 'lib/plan-calendar-import.ts', 'lib/personal-plan-store.ts', 'tests/plans.test.cjs', 'package*.json', '.github/workflows/plans.yml']
   pull_request:
-    paths: ['app/plans/**', 'app/api/plans/**', 'components/plans/**', 'lib/plans.ts', 'lib/plan-calendar-import.ts', 'lib/personal-plan-store.ts', 'tests/plans.test.cjs', 'package*.json', '.github/workflows/plans.yml']
+    paths: ['app/plans/**', 'app/api/plans/**', 'components/plans/**', 'lib/plans.ts', 'lib/calendar-sync.ts', 'public/downloads/personal-calendar-sync.gs', 'public/downloads/personal-calendar-appsscript.json', 'tests/calendar-sync.test.mjs', 'supabase/migrations/*personal_calendar_sync.sql', 'lib/plan-calendar-import.ts', 'lib/personal-plan-store.ts', 'tests/plans.test.cjs', 'package*.json', '.github/workflows/plans.yml']
 permissions:
   contents: read
 jobs:
@@ -19,3 +19,4 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run test:plans
+      - run: npm run test:calendar-sync
