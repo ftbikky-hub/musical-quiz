@@ -1,0 +1,10 @@
+.keepsake { position: relative; display: flex; justify-content: space-between; gap: 30px; flex-wrap: wrap; overflow: hidden; background: #263e33; border-radius: 5px; color: #fff9eb; padding: 30px 35px; margin-bottom: 38px; }
+.keepsake::after { content: ""; position: absolute; width: 230px; height: 360px; border: 1px solid #c9ae6b30; border-radius: 130px 130px 0 0; right: 15%; top: -90px; transform: rotate(35deg); pointer-events: none; }
+.keepsake h2 { font: 26px/1.8 var(--theatre-serif); margin: 0 0 12px; text-wrap: balance; }.keepsake > div > p:last-child { font-size: 12px; color: #d5dbc9; line-height: 1.9; margin: 0; }
+.numbers { display: flex; align-items: center; gap: 35px; z-index: 1; }.numbers strong { font: 40px Georgia,serif; text-align: center; }.numbers span { display: block; color: #d8c99e; font-size: 10px; margin-top: 10px; }
+.year { display: flex; gap: 10px; align-items: center; font-size: 11px; color: #737b68; }.year select { border: 1px solid #dcd7c7; padding: 9px 15px; border-radius: 4px; color: #345b45; background: #fffdf7; font-size: 12px; }
+.theatre { --event-color: #345b45; }.movie { --event-color: #476a81; }.fanmeeting { --event-color: #6e5379; }.concert { --event-color: #82604a; }.other { --event-color: #9b782e; }.badge { color: var(--event-color); font-size: 11px; }
+.nextChapter { margin: 30px 0 0; padding: 25px 0; border-top: 1px solid #dcd7c7; border-bottom: 1px solid #dcd7c7; }.nextChapter h2 { font: 20px/1.8 var(--theatre-serif); margin: 0 0 12px; }.nextChapter > p:last-child { font-size: 11px; color: #737b68; line-height: 1.9; max-width: 650px; }
+@media(max-width:700px) { .keepsake { padding: 24px; gap: 24px; }.keepsake h2 { font-size: 23px; }.numbers { justify-content: flex-start; gap: 38px; }.numbers strong { font-size: 33px; }.nextChapter h2 { font-size: 18px; } }
+
+.recordDate small { white-space: nowrap; font-size: 8px; }

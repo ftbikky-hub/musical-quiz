@@ -58,6 +58,7 @@ export default async function TheaterLogPage({
       </PageHeading>
 
       <div className="flex gap-3 flex-wrap">
+        <Link href="/activity" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">映画・コンサートも残す行動記録 ↗</Link>
         <Link href="/plans" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">これからの予定を見る ↗</Link>
         <Link
           href="/theater-log/new"

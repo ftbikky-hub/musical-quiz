@@ -7,5 +7,6 @@ export const sections = [
   { id: "collection", href: "/media", label: "コレクション", english: "MY COLLECTION", number: "06", note: "好きなものを、好きなだけ。何度でも開きたくなる、自分だけの棚。" },
   { id: "lineup", href: "/lineup", label: "上演予定", english: "THE NEXT CURTAIN CALL", number: "07", note: "次の観劇を、見つけよう。楽しみな舞台が、またひとつ。" },
   { id: "plans", href: "/plans", label: "私の予定", english: "MY UPCOMING STAGES", number: "08", note: "次の拍手までの時間も、楽しみのひとつ。あなたの予定を、この手帳に。" },
+  { id: "activity", href: "/activity", label: "行動記録", english: "MY DAYS & PLACES", number: "09", note: "好きに会いに行った日を、ひとつずつ。記録が、あなたの足跡になる。" },
 ] as const;
 export type SectionId = (typeof sections)[number]["id"] | "account";

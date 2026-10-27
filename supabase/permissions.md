@@ -86,3 +86,7 @@ dumpのGRANT・RLS・Policy・FK・関数・ビュー・シーケンスを確認
 ## カレンダー自動更新（2026-10-23）
 
 `migrations/20261023091936_personal_calendar_sync.sql` をSupabaseのapply_migrationで適用した。サーバー発行のmigration番号と同じSQLを保存。接続ハッシュ・同期管理の追加2表はRLS有効、公開ロール権限なし、service_roleのみSELECT/INSERT/UPDATE。sync_personal_calendar関数はsecurity invokerかつservice_roleのみEXECUTEで、トークンを再検証して一括反映する。既存テーブルのACLは変更しない。全体baselineが完成したわけではなく、CLIのdb resetは未実施。
+
+## 行動記録（2026-10-27）
+
+`migrations/20261027065532_activity_records.sql` を管理連携で適用。activity_recordsのRLSを有効化し、anon/authenticatedはアクセス不可、service_roleのみSELECT/INSERT/UPDATE/DELETEを明示する。既存の観劇記録・予定とACLは変更しない。予定の削除で行動記録を消さず、参照だけNULLになる。全体baseline・db resetの未検証範囲は変わらない。詳細は[行動記録](../docs/activity.md)。
