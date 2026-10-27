@@ -33,3 +33,28 @@ Supabase管理連携で `20261027065532_activity_records` を適用した。同�
 `npm run test:supabase` にも追加し、SQL登録一覧を更新。ブラウザは実コンポーネント＋APIフィクスチャで4幅、5種類、入力・編集・削除、検索・年絞り込み・予定引き継ぎ・エラー再試行を確認する。本番への個人データのテスト投入はしない。
 
 本番のRLS・公開ロールのSELECT拒否・service_roleのCRUD権限と空の記録表を確認済み。Supabaseアドバイザーの[RLS Enabled No Policy](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)はINFO表示になるが、サーバー経由のみの設計として意図した状態。公開Policyを追加しない。
+
+## 思い出の日本地図（2026-10-27）
+
+`/activity/map`。行動記録の上部「思い出の日本地図」および下部の案内から開く。名前選択後の本人用画面。記録1件＝1回として、同じ正規化済み会場名＋エリアに積み上げる。NFKC・小文字化・空白除去のみで、部分一致や都市中心への自動配置はしない。エリア表記が違う同一会場は別扱いなので、記録の会場名とエリアを揃える。
+
+- 年・種類を絞り込み。再生は日付単位、同日の記録はまとめて追加。未知の時刻を補わず、訪問順・実際の移動経路を捏造しない。再生は手動開始、一時停止、速度、スライダー、全件表示に対応。
+- 近い会場を集約。画面の幅とズーム倍率を考慮し、集約マーカーはクリックで拡大。ズーム・ドラッグ・方向ボタン・日本全体に戻るボタン。会場コレクションからも単独会場を選択できる。
+- マーカーを押すと会場別の記録と編集リンク。回数は常に正確。塔は最大高さと描画段数を調整し、大量記録でも描画を抑える。色は記録の種類。reduced-motion時は段追加の動きを止める。
+- 新しい地図ライブラリや有料APIは利用しない。地図はNatural Earthの50m Admin 0 Countries、日本の外周（小数4桁）を同梱。小さい島を省略する概略図。出典： https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson 。Public Domain： https://www.naturalearthdata.com/about/terms-of-use/ 。海外の会場表示は対象外。
+
+### 会場の位置
+
+`lib/activity-map.ts`に大阪四季劇場と舞浜アンフィシアターの会場位置を登録。会場名の完全一致＋対応するエリアだけに適用する。アクセス案内： https://www.herbis.jp/shop/detail/97 、https://www.maihama-amphitheater.jp/access/ 。大阪の座標参照： https://commons.wikimedia.org/wiki/Category:Osaka_Shiki_Theatre 、舞浜の座標参照： https://www.event-tenki.com/maihama-chiba8/ 。施設の概略位置であり座席や入口の位置を表すものではない。
+
+未知の会場は位置未設定として一覧に残し、地図の表示件数と全記録数を分けて表示する。会場コレクションの位置設定から、Googleマップを別タブで検索し、利用者が確認した緯度・経度を入力して保存。公開の地理検索サービスへ行動記録を自動送信しない。自分で保存した位置を優先し、解除すると既知会場の標準位置に戻る。同じ会場名＋エリアの将来の記録にも反映。削除した行動記録が塔の回数に残ることはない。
+
+位置は`activity_places`に個人別で保存。既存の行動記録や予定の行・ACLは変更しない。RLS有効、anon/authenticated/Publicは無権限、service_roleだけSELECT/INSERT/UPDATE/DELETE。今の名前選択方式を引き継ぎ、厳格な本人認証を追加したものではない。APIは全操作で選択名のIDを使用。保存時は該当する自分の行動記録があることも確認する。緯度20～46、経度122～154の表示範囲と有限数の検証を行うが、日本の行政区域内かの判定を行うものではない。
+
+`migrations/20261027093002_activity_places.sql`はSupabase管理連携で適用済み。CLIが読み取り専用ホームへの作成で失敗する環境のため、破棄可能なPGliteでSQLを検証後、apply_migrationで本番へ適用し、サーバー発行の番号で同じSQLを保存した。既存の完全baseline不足・db reset未検証の制限は変わらない。
+
+### 地図の検証
+
+`tests/activity-map.test.mjs`：会場の誤照合防止、位置の検証と優先順位、回数・集約・日付再生、旧自動GRANTあり／なしの実際のDDL再生、RLS・ACL、範囲制約、他人の会場への書込拒否、CSRF、本人別の一覧・削除、owner注入防止。`npm run test:activity`と`npm run test:supabase`から実行する。
+
+実コンポーネントを使ったローカルブラウザfixtureで1440/768/390/320pxの幅・塔と回数・集約と拡大・キーボード操作・絞込・再生／停止／位置移動・位置保存後の再読込・reduced-motion・読み込み失敗の再試行を確認。fixtureは人工データのみで、実際の利用者の記録をテストコードに含めない。

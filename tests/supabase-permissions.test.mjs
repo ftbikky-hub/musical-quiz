@@ -11,7 +11,7 @@ const sources = ['seed.sql', 'theater-log.sql', 'theater-log-social.sql',
   'archive-runs-cast-staff.sql', 'archive-works-venues.sql'];
 const manual = ['archive-cast.sql', 'archive-name-selection-read.sql',
   'check-schedule-dependencies.sql', 'remove-schedule.sql', 'check-data-api-privileges.sql'];
-const reviewedMigrations = ['migrations/20261022000000_personal_plans.sql', 'migrations/20261023091936_personal_calendar_sync.sql', 'migrations/20261027065532_activity_records.sql'];
+const reviewedMigrations = ['migrations/20261022000000_personal_plans.sql', 'migrations/20261023091936_personal_calendar_sync.sql', 'migrations/20261027065532_activity_records.sql', 'migrations/20261027093002_activity_places.sql'];
 const roles = ['anon', 'authenticated', 'service_role'];
 const operations = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
 const readonly = { anon: ['SELECT'], authenticated: ['SELECT'], service_role: [] };

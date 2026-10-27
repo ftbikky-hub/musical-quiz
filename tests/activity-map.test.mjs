@@ -1,0 +1,76 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile,readdir } from 'node:fs/promises';
+import vm from 'node:vm';
+import ts from 'typescript';
+import { PGlite } from '@electric-sql/pglite';
+const root=new URL('../',import.meta.url);
+async function load(file,imports={}){const out={};vm.runInNewContext(ts.transpileModule(await readFile(new URL(file,root),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,{exports:out,require:id=>{if(id in imports)return imports[id];throw Error(id)},Response,URL,console});return out;}
+const map=await load('lib/activity-map.ts');
+const row=(extra={})=>({id:'1',kind:'theatre',date:'2026-01-01',time:null,venue:'大阪四季劇場',city:'大阪',title:'作品',...extra});
+test('venue identity is normalized without fuzzy guessing and unknown venues stay off the map',()=>{
+ assert.equal(map.venueKey(' Ａ ホール ','東京'),map.venueKey('aホール','東京'));
+ assert.notEqual(map.venueKey('ホール','東京'),map.venueKey('ホール','大阪'));
+ assert(map.resolvePlace(row(),[]));assert.equal(map.resolvePlace(row({city:'札幌'}),[]),null);
+ assert.equal(map.resolvePlace(row({venue:'似ている劇場'}),[]),null);
+ const key=map.venueKey('大阪四季劇場','大阪');
+ assert.equal(map.resolvePlace(row(),[{venue_key:key,latitude:35,longitude:135}]).latitude,35);
+ for(const p of [{latitude:'35',longitude:135},{latitude:Infinity,longitude:135},{latitude:0,longitude:135},{latitude:35,longitude:0}])assert.throws(()=>map.normalizePlace({venue:'ホール',city:'東京',...p}));
+ assert.equal(map.normalizePlace({venue:'ホール',city:'東京',latitude:35,longitude:135,user_id:'evil'}).user_id,undefined);
+});
+test('tower counts retain every visit; zoom separates nearby venues and replay groups unknown same-day order',()=>{
+ const rows=[row(),row({id:'2',date:'2026-02-02',kind:'movie'}),row({id:'3',date:'2026-02-02',venue:'別の会場',city:'大阪'})];
+ const places=[{venue_key:map.venueKey('別の会場','大阪'),latitude:34.7,longitude:135.5}];
+ const towers=map.buildTowers(rows,places);assert.equal(towers.length,2);assert.equal(towers[0].records.length,2);
+ assert.equal(map.clusterTowers(towers,1).length,1);assert.equal(map.clusterTowers(towers,64).length,1); // very close locations intentionally remain grouped
+ const steps=map.replaySteps(rows);assert.equal(steps.length,2);assert.equal(steps[1].records.length,2);
+ const separated=map.buildTowers([...rows,row({id:'4',venue:'舞浜アンフィシアター',city:'舞浜'})],places);
+ assert.equal(map.clusterTowers(separated,1).length,2);
+ assert.equal(map.buildTowers([row({venue:'未知'})],[]).length,0);
+});
+const files=await readdir(new URL('supabase/migrations/',root));
+const sql=await readFile(process.env.ACTIVITY_PLACES_SQL_FILE||new URL('supabase/migrations/'+files.find(f=>f.endsWith('_activity_places.sql')),root),'utf8');
+const uid='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000-000000000002';
+for(const defaults of [false,true])test(`places replay explicit least privilege, ownership keys and RLS (defaults ${defaults})`,async()=>{
+ const db=new PGlite();try{
+  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;grant usage on schema public to anon,authenticated,service_role;create schema auth;create table auth.users(id uuid primary key);insert into auth.users values('${uid}'),('${other}');create table existing_table(id integer);grant select on existing_table to authenticated;`);
+  const before=(await db.query("select relacl::text from pg_class where oid='existing_table'::regclass")).rows;
+  if(defaults)await db.exec('alter default privileges in schema public grant all on tables to anon,authenticated,service_role');
+  await db.exec(sql);assert.deepEqual((await db.query("select relacl::text from pg_class where oid='existing_table'::regclass")).rows,before);
+  assert.equal((await db.query("select relrowsecurity from pg_class where oid='activity_places'::regclass")).rows[0].relrowsecurity,true);
+  for(const role of ['anon','authenticated','service_role'])for(const op of ['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'])assert.equal((await db.query('select has_table_privilege($1,$2,$3) as ok',[role,'activity_places',op])).rows[0].ok,role==='service_role'&&['SELECT','INSERT','UPDATE','DELETE'].includes(op));
+  await db.exec('set role service_role');
+  for(const user of [uid,other])await db.query('insert into activity_places(user_id,venue_key,latitude,longitude) values($1,$2,35,135)',[user,'same-venue']);
+  await db.query('update activity_places set latitude=36 where user_id=$1',[uid]);
+  assert.equal((await db.query('select latitude from activity_places where user_id=$1',[other])).rows[0].latitude,35);
+  await assert.rejects(db.query('update activity_places set latitude=100'),/check constraint/);
+  await assert.rejects(db.query("update activity_places set latitude='NaN'::double precision"),/check constraint/);
+  await db.query('delete from activity_places where user_id=$1',[uid]);assert.equal((await db.query('select count(*)::integer as n from activity_places')).rows[0].n,1);
+  await db.exec('reset role');
+  for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(db.query('select * from activity_places'),/permission denied/);await assert.rejects(db.query('delete from activity_places'),/permission denied/);await db.exec('reset role');}
+  await db.exec('grant select on activity_places to authenticated;set role authenticated');assert.equal((await db.query('select * from activity_places')).rows.length,0);
+ }finally{await db.close()}
+});
+async function harness(member=uid){
+ const saved=[{venue_key:map.venueKey('会場','東京'),latitude:35,longitude:135,user_id:other}];
+ const records=[{id:'record',user_id:uid,venue:'会場',city:'東京'},{id:'other',user_id:other,venue:'他の会場',city:'大阪'}];
+ const db={from(table){let filters={},action='read';const match=r=>Object.entries(filters).every(([k,v])=>r[k]===v);const q={select:()=>q,eq:(k,v)=>{filters[k]=v;return q},order:()=>q,range:async()=>({data:saved.filter(match).map(({user_id,...p})=>p),error:null}),limit:async()=>({data:records.filter(match),error:null}),upsert:async(v)=>{assert.equal(v.user_id,member);const i=saved.findIndex(r=>r.user_id===v.user_id&&r.venue_key===v.venue_key);if(i<0)saved.push(v);else saved[i]=v;return {error:null}},delete:()=>{action='delete';return q},then(resolve){if(action==='delete'){for(let i=saved.length-1;i>=0;i--)if(match(saved[i]))saved.splice(i,1);}return Promise.resolve({error:null}).then(resolve)}};return q}};
+ const admin={supabaseAdmin:db},members={getCurrentJournalMember:async()=>member?{id:member}:null};
+ const errors=await load('lib/personal-plan-store.ts',{'@/lib/supabase/admin':admin,'@/lib/journal-members':members});
+ const store=await load('lib/activity-store.ts',{'@/lib/supabase/admin':admin,'@/lib/journal-members':members,'./personal-plan-store':errors});
+ return {saved,route:await load('app/api/activity/places/route.ts',{'@/lib/activity-store':store,'@/lib/activity-map':map,'@/lib/personal-plan-store':errors})};
+}
+const body={venue:'会場',city:'東京',latitude:35,longitude:135};
+const req=(method,value=body,origin='https://theatre.test')=>new Request('https://theatre.test/api/activity/places',{method,headers:{origin},body:JSON.stringify(value)});
+test('place API rejects CSRF and unowned venues; ignores client owner; lists and deletes only selected member',async()=>{
+ const h=await harness();assert.equal((await h.route.GET()).status,200);assert.equal((await (await h.route.GET()).json()).length,0);
+ assert.equal((await h.route.POST(req('POST',body,'https://evil.test'))).status,403);
+ assert.equal((await h.route.POST(req('POST',{...body,venue:'他の会場',city:'大阪'}))).status,404);
+ assert.equal((await h.route.POST(req('POST',{...body,user_id:other}))).status,200);
+ assert.equal(h.saved.length,2);assert.equal(h.saved[1].user_id,uid);
+ assert.equal((await h.route.POST(req('POST',{...body,latitude:500}))).status,400);
+ assert.equal((await (await h.route.GET()).json()).length,1);
+ assert.equal((await h.route.DELETE(req('DELETE',body,'https://evil.test'))).status,403);
+ assert.equal((await h.route.DELETE(req('DELETE'))).status,200);assert.equal(h.saved.length,1);assert.equal(h.saved[0].user_id,other);
+ const anonymous=await harness(null);assert.equal((await anonymous.route.GET()).status,401);assert.equal((await anonymous.route.POST(req('POST'))).status,401);
+});

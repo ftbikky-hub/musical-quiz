@@ -90,3 +90,7 @@ dumpのGRANT・RLS・Policy・FK・関数・ビュー・シーケンスを確認
 ## 行動記録（2026-10-27）
 
 `migrations/20261027065532_activity_records.sql` を管理連携で適用。activity_recordsのRLSを有効化し、anon/authenticatedはアクセス不可、service_roleのみSELECT/INSERT/UPDATE/DELETEを明示する。既存の観劇記録・予定とACLは変更しない。予定の削除で行動記録を消さず、参照だけNULLになる。全体baseline・db resetの未検証範囲は変わらない。詳細は[行動記録](../docs/activity.md)。
+
+## 行動記録の会場位置（2026-10-27）
+
+`migrations/20261027093002_activity_places.sql`を管理連携で適用。会場名とエリアを正規化したキー＋利用者IDが主キー。RLS有効、Public/anon/authenticatedは無権限、service_roleのみSELECT/INSERT/UPDATE/DELETE（一覧・位置保存・位置変更・位置解除に使用）。名前選択方式に合わせて全APIで所有者を指定するため、公開Policyは追加しない。既存表のACLと行は変更しない。SQL再構築を旧既定GRANTあり／なしで検証し、Data API側の公開権限に依存しない。全体baseline／db resetの制限は継続。
