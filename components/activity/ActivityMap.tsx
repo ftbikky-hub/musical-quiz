@@ -13,7 +13,7 @@ const land = outline.map(ring => ring.map(([lon, lat], i) => `${i ? "L" : "M"}${
 const labels = [{ name: "北海道", lon: 143, lat: 43.4 }, { name: "東北", lon: 141.2, lat: 39 }, { name: "関東", lon: 141, lat: 35.7 }, { name: "中部", lon: 137.2, lat: 36.4 }, { name: "関西", lon: 134.5, lat: 35.6 }, { name: "中国", lon: 132.5, lat: 35.3 }, { name: "四国", lon: 134, lat: 32.7 }, { name: "九州", lon: 129.3, lat: 32.4 }, { name: "沖縄", lon: 128.7, lat: 26.2 }];
 function travelerStop(towers: MemoryTower[]) {
   const n = Math.max(1, towers.length);
-  return { latitude: towers.reduce((sum, t) => sum + t.latitude, 0) / n, longitude: towers.reduce((sum, t) => sum + t.longitude, 0) / n, label: [...new Set(towers.map(t => t.city || t.venue))].join("・") };
+  return { latitude: towers.reduce((sum, t) => sum + t.latitude, 0) / n, longitude: towers.reduce((sum, t) => sum + t.longitude, 0) / n, label: [...new Set(towers.map(t => t.city || t.venue))].join("・"), venue: [...new Set(towers.map(t => t.venue))].join("・") };
 }
 const fullView = { zoom: 1, x: 480, y: 310 };
 export function ActivityMap() {

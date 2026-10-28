@@ -7,6 +7,17 @@ import { PGlite } from '@electric-sql/pglite';
 const root=new URL('../',import.meta.url);
 async function load(file,imports={}){const out={};vm.runInNewContext(ts.transpileModule(await readFile(new URL(file,root),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,{exports:out,require:id=>{if(id in imports)return imports[id];throw Error(id)},Response,URL,console});return out;}
 const map=await load('lib/activity-map.ts');
+const travel=await load('lib/activity-travel-scene.ts',{'./activity-map':map});
+test('express journey moves the camera and train at national and local scales, including nearby arrivals',()=>{
+ const osaka={latitude:34.7,longitude:135.49},tokyo={latitude:35.657,longitude:139.762},akasaka={latitude:35.672,longitude:139.738};
+ const a=travel.travelScene(osaka,tokyo,0),b=travel.travelScene(osaka,tokyo,1);
+ assert(Math.abs(a.camera[0]-b.camera[0])>30);assert(Math.abs(a.screen[0]-b.screen[0])>250);
+ const local=travel.travelScene(akasaka,tokyo,.5);assert(local.zoom>a.zoom*10);
+ const first=travel.travelScene(tokyo,tokyo,0),last=travel.travelScene(tokyo,tokyo,1);
+ assert(first.nearby);assert(Math.abs(first.screen[0]-last.screen[0])>250);
+ const expected=map.projectPlace(tokyo.longitude,tokyo.latitude);assert(Math.abs(last.point[0]-expected[0])<1e-8);assert(Math.abs(last.point[1]-expected[1])<1e-8);
+ for(const p of [0,.25,.5,.75,1])for(const scene of [travel.travelScene(osaka,tokyo,p),travel.travelScene(tokyo,tokyo,p)])assert([scene.zoom,scene.angle,...scene.point,...scene.camera,...scene.screen].every(Number.isFinite));
+});
 const readiness=await load('lib/activity-map-readiness.ts');
 test('playback waits for both camera and tiles; failure and stale focus cannot release the next day',()=>{
  const states=[],g=readiness.createMemoryMapGate(s=>states.push(s));

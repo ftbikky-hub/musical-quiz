@@ -152,7 +152,7 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
 
   const mapReady = readiness.status === "ready" && (!trip?.expectedFocus || readiness.id === trip.expectedFocus);
   const preparingVenue = allTowers.find(t => focus?.keys.includes(t.key)) || allTowers[0];
-  const preparingStop = preparingVenue ? { latitude: preparingVenue.latitude, longitude: preparingVenue.longitude, label: preparingVenue.city || preparingVenue.venue } : null;
+  const preparingStop = preparingVenue ? { latitude: preparingVenue.latitude, longitude: preparingVenue.longitude, label: preparingVenue.city || preparingVenue.venue, venue: preparingVenue.venue } : null;
   const travelCover = !!trip && (!trip.completed || !mapReady);
   const prepareCover = !trip && !mapReady && shownFocus !== (focus?.id || "initial") && !!preparingStop;
   const covered = travelCover || prepareCover;
