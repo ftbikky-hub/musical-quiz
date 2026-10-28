@@ -7,6 +7,17 @@ import { PGlite } from '@electric-sql/pglite';
 const root=new URL('../',import.meta.url);
 async function load(file,imports={}){const out={};vm.runInNewContext(ts.transpileModule(await readFile(new URL(file,root),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,{exports:out,require:id=>{if(id in imports)return imports[id];throw Error(id)},Response,URL,console});return out;}
 const map=await load('lib/activity-map.ts');
+const journey=await load('lib/activity-journey.ts',{'./activity-map':map});
+test('journey replay stays regional, zooms out for long trips and reaches exact endpoints without image loading',()=>{
+ const tokyo=journey.journeyDestination([{longitude:139.76,latitude:35.65}]);
+ const osaka=journey.journeyDestination([{longitude:135.49,latitude:34.70}]);
+ assert(tokyo.zoom<=2.8);assert(osaka.zoom<=2.8);assert.equal(journey.journeyDestination([]),null);
+ const start=journey.journeyFrame(osaka,tokyo,0),end=journey.journeyFrame(osaka,tokyo,1),mid=journey.journeyFrame(osaka,tokyo,.45);
+ for(const key of ['x','y','zoom']){assert(Math.abs(start[key]-osaka[key])<1e-8);assert(Math.abs(end[key]-tokyo[key])<1e-8);}
+ assert(mid.zoom<=1.31);assert(mid.x>osaka.x&&mid.x<tokyo.x);
+ assert(journey.journeyDuration(osaka,tokyo)>=800);assert(journey.journeyDuration(osaka,tokyo)<=1700);assert.equal(journey.journeyDuration(tokyo,tokyo),0);
+ for(let i=0;i<=100;i++){const frame=journey.journeyFrame(osaka,tokyo,i/100);assert(Number.isFinite(frame.x)&&Number.isFinite(frame.y));assert(frame.zoom>=1&&frame.zoom<=2.8);}
+});
 const row=(extra={})=>({id:'1',kind:'theatre',date:'2026-01-01',time:null,venue:'大阪四季劇場',city:'大阪',title:'作品',...extra});
 test('venue identity is normalized without fuzzy guessing and unknown venues stay off the map',()=>{
  assert.equal(map.venueKey(' Ａ ホール ','東京'),map.venueKey('aホール','東京'));
