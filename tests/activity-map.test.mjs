@@ -11,13 +11,19 @@ const readiness=await load('lib/activity-map-readiness.ts');
 test('playback waits for both camera and tiles; failure and stale focus cannot release the next day',()=>{
  const states=[],g=readiness.createMemoryMapGate(s=>states.push(s));
  g.begin('day1');g.tileStart();g.moveEnd(true);assert.equal(states.at(-1).status,'loading');
- g.tileEnd();assert.equal(states.at(-1).status,'ready');assert.equal(states.at(-1).id,'day1');
+ g.tileEnd();assert.equal(states.at(-1).status,'loading');g.paintReady();assert.equal(states.at(-1).status,'ready');assert.equal(states.at(-1).id,'day1');
  g.begin('day2');g.tileEnd();assert.equal(states.at(-1).status,'loading');
- g.moveEnd(false);assert.equal(states.at(-1).id,'day2');assert.equal(states.at(-1).status,'ready');
+ g.moveEnd(false);assert.equal(states.at(-1).status,'loading');g.paintReady();assert.equal(states.at(-1).id,'day2');assert.equal(states.at(-1).status,'ready');
  g.begin('day3');g.tileError();g.tileEnd();g.moveEnd(false);assert.equal(states.at(-1).status,'failed');
  g.begin('day3-retry-pending');g.moveEnd(false);g.tileEnd();assert.equal(states.at(-1).status,'failed');
- g.retry();g.tileEnd();assert.equal(states.at(-1).status,'ready');
+ g.retry();g.tileEnd();g.paintReady();assert.equal(states.at(-1).status,'ready');
  const n=states.length;g.dispose();g.begin('day4');g.tileEnd();assert.equal(states.length,n);
+});
+test('decoded tile rectangles must cover the entire viewport before revealing the destination',()=>{
+ assert.equal(readiness.tilesCoverViewport([],500,500),false);
+ assert.equal(readiness.tilesCoverViewport([{left:0,top:0,right:500,bottom:200}],500,500),false);
+ assert.equal(readiness.tilesCoverViewport([{left:0,top:0,right:250,bottom:500},{left:250,top:0,right:500,bottom:500}],500,500),true);
+ assert.equal(readiness.tilesCoverViewport([{left:0,top:0,right:100,bottom:500},{left:200,top:0,right:500,bottom:500}],500,500),false);
 });
 const row=(extra={})=>({id:'1',kind:'theatre',date:'2026-01-01',time:null,venue:'大阪四季劇場',city:'大阪',title:'作品',...extra});
 test('venue identity is normalized without fuzzy guessing and unknown venues stay off the map',()=>{

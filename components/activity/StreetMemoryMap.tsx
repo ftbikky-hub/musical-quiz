@@ -3,27 +3,31 @@ import { useEffect, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
 import type { Feature, MultiPolygon } from "geojson";
 import { MAP_COLORS, shortVenue, spreadTowerLabels, towerFloorHeight, type MemoryTower } from "@/lib/activity-map";
-import { createMemoryMapGate, type MemoryMapReadiness } from "@/lib/activity-map-readiness";
+import { createMemoryMapGate, tilesCoverViewport, type MemoryMapReadiness } from "@/lib/activity-map-readiness";
+import { TravelerJourney, type TravelerStop } from "./TravelerJourney";
 import outline from "@/data/japan-outline.json";
 import styles from "./map.module.css";
 
 export interface MemoryMapFocus { id: string; keys: string[]; maxZoom?: number; minZoom?: number; replay?: boolean }
 const tileUrl = process.env.NEXT_PUBLIC_MEMORY_MAP_TILES || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect, onReadiness }: { towers: MemoryTower[]; allTowers: MemoryTower[]; activeKeys: string[]; focus: MemoryMapFocus | null; onSelect: (keys: string[]) => void; onReadiness: (state: MemoryMapReadiness) => void }) {
+const ignoreCompletion = () => {};
+export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect, onReadiness, readiness, trip }: { towers: MemoryTower[]; allTowers: MemoryTower[]; activeKeys: string[]; focus: MemoryMapFocus | null; onSelect: (keys: string[]) => void; onReadiness: (state: MemoryMapReadiness) => void; readiness: MemoryMapReadiness; trip: { id: string; from: TravelerStop; to: TravelerStop; running: boolean; completed: boolean; duration: number; expectedFocus: string | null; onComplete: (id: string) => void } | null }) {
   const container = useRef<HTMLDivElement>(null), mapRef = useRef<Leaflet.Map | null>(null), groupRef = useRef<Leaflet.LayerGroup | null>(null), leafletRef = useRef<typeof Leaflet | null>(null);
   const drawRef = useRef<() => void>(() => {});
   const lastFocus = useRef("");
   const gateRef = useRef<ReturnType<typeof createMemoryMapGate> | null>(null), tileRef = useRef<Leaflet.TileLayer | null>(null);
   const [ready, setReady] = useState(false), [error, setError] = useState("");
+  const [shownFocus, setShownFocus] = useState("");
   useEffect(() => {
     let alive = true;
     let observer: ResizeObserver | undefined;
+    let paintTimer = 0;
     import("leaflet").then(L => {
       if (!alive || !container.current) return;
       leafletRef.current = L;
       const map = L.map(container.current, { zoomControl: false, minZoom: 4, maxZoom: 19, scrollWheelZoom: true, zoomSnap: .5, zoomDelta: 1, keyboard: true });
       mapRef.current = map;
-      const gate = createMemoryMapGate(onReadiness); gateRef.current = gate;
+      const gate = createMemoryMapGate(state => { onReadiness(state); if (state.status === "ready") setShownFocus(state.id); }); gateRef.current = gate;
       map.fitBounds([[24, 123], [46, 146]], { padding: [12, 12], animate: false });
       // A local outline remains visible while distant street tiles are arriving.
       map.createPane("memory-land").style.zIndex = "150";
@@ -34,18 +38,27 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
       // Browser caching/referrers are preserved; only currently visible tiles are fetched.
       const tiles = L.tileLayer(tileUrl, { maxZoom: 19, updateWhenIdle: true, updateWhenZooming: false, keepBuffer: 1, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors' });
       tileRef.current = tiles;
-      tiles.on("loading", () => gate.tileStart());
+      let moving = false, needsPaint = true;
+      tiles.on("loading", () => { needsPaint = true; gate.tileStart(); });
       tiles.on("load", () => gate.tileEnd());
       tiles.on("tileerror", () => { gate.tileError(); if (alive) setError("背景地図を読み込めませんでした。会場ごとの塔を残し、再生は待機しています。"); });
-      map.on("movestart", () => gate.moveStart());
-      map.on("moveend", () => gate.moveEnd(tiles.isLoading()));
+      map.on("movestart", () => { moving = true; needsPaint = true; gate.moveStart(); });
+      map.on("moveend", () => { moving = false; needsPaint = true; gate.moveEnd(tiles.isLoading()); });
       tiles.addTo(map);
+      // Leaflet's load event is earlier than image decode/fade/paint. Check the
+      // viewport itself before revealing it or releasing the playback timer.
+      paintTimer = window.setInterval(() => {
+        if (!alive || !needsPaint || moving || tiles.isLoading() || !container.current) return;
+        const box = container.current.getBoundingClientRect();
+        const rects = [...container.current.querySelectorAll<HTMLImageElement>(".leaflet-tile-pane img.leaflet-tile")].filter(img => img.complete && img.naturalWidth > 0 && Number(window.getComputedStyle(img).opacity) >= .99).map(img => { const r = img.getBoundingClientRect(); return { left: r.left - box.left, top: r.top - box.top, right: r.right - box.left, bottom: r.bottom - box.top }; });
+        if (tilesCoverViewport(rects, box.width, box.height)) { needsPaint = false; gate.paintReady(); }
+      }, 120);
       groupRef.current = L.layerGroup().addTo(map);
       map.on("moveend zoomend resize", () => drawRef.current());
       observer = new ResizeObserver(() => map.invalidateSize({ pan: false })); observer.observe(container.current);
       setReady(true);
     }).catch(() => { if (alive) setError("詳細地図を開けませんでした。「日本全体」で概略図に戻ってください。"); });
-    return () => { alive = false; gateRef.current?.dispose(); observer?.disconnect(); mapRef.current?.remove(); mapRef.current = null; groupRef.current = null; tileRef.current = null; };
+    return () => { alive = false; window.clearInterval(paintTimer); gateRef.current?.dispose(); observer?.disconnect(); mapRef.current?.remove(); mapRef.current = null; groupRef.current = null; tileRef.current = null; };
   }, [onReadiness]);
 
   useEffect(() => {
@@ -54,7 +67,12 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
       group.clearLayers();
       const size = map.getSize(), unit = towerFloorHeight(allTowers), detailed = focus?.replay || map.getZoom() >= 14;
       const visibleKeys = new Set(towers.map(t => t.key));
-      const positions = allTowers.map(t => { const point = map.latLngToContainerPoint([t.latitude, t.longitude]); return { key: t.key, x: point.x, y: point.y, height: unit * t.records.length }; }).filter(p => p.x > -80 && p.x < size.x + 80 && p.y > -80 && p.y < size.y + 160);
+      const placementTowers = focus?.replay && map.getZoom() < 14 ? allTowers.filter(t => activeKeys.includes(t.key)) : allTowers;
+      if (focus?.replay && map.getZoom() < 14) for (const t of towers.filter(t => !activeKeys.includes(t.key))) {
+        const label = document.createElement("span"); label.textContent = `${t.venue} · ${t.records.length}回`;
+        L.circleMarker([t.latitude, t.longitude], { radius: 4, color: "#486d55", fillColor: "#c5b471", fillOpacity: .8, weight: 1 }).bindTooltip(label).addTo(group);
+      }
+      const positions = placementTowers.map(t => { const point = map.latLngToContainerPoint([t.latitude, t.longitude]); return { key: t.key, x: point.x, y: point.y, height: unit * t.records.length }; }).filter(p => p.x > -80 && p.x < size.x + 80 && p.y > -80 && p.y < size.y + 160);
       if (!detailed) {
         const groups: { x: number; y: number; towers: MemoryTower[] }[] = [];
         for (const t of towers) {
@@ -119,8 +137,19 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
     const centre = bounds.getCenter();
     const sameView = map.getCenter().distanceTo(centre) < 1 && Math.abs(map.getZoom() - zoom) < .01;
     map.flyTo(centre, zoom, { duration: focus.replay ? 1.3 : .7, animate });
-    if (sameView || !animate) gateRef.current?.moveEnd(tileRef.current?.isLoading() || false);
+    if (sameView || !animate) {
+      gateRef.current?.moveEnd(tileRef.current?.isLoading() || false);
+      // A same-position visit may produce no native moveend to trigger paint checking.
+      map.fire("moveend");
+    }
   }, [focus, allTowers, ready]);
 
-  return <div className={styles.streetWrap}><div ref={container} className={styles.streetMap} role="region" aria-label="会場ごとの塔を表示する詳細地図"/>{!ready && !error && <p className={styles.streetNotice} role="status">街の地図を広げています…</p>}{error && <div className={styles.streetNotice} role="status"><p>{error}</p><button type="button" onClick={() => { setError(""); gateRef.current?.retry(); tileRef.current?.redraw(); }}>地図を再読み込み</button></div>}<p className={styles.streetHint}>指2本・ホイール・＋−で拡大縮小<br/>点が会場の位置。線の先の塔は見やすく離しています。</p></div>;
+  const mapReady = readiness.status === "ready" && (!trip?.expectedFocus || readiness.id === trip.expectedFocus);
+  const preparingVenue = allTowers.find(t => focus?.keys.includes(t.key)) || allTowers[0];
+  const preparingStop = preparingVenue ? { latitude: preparingVenue.latitude, longitude: preparingVenue.longitude, label: preparingVenue.city || preparingVenue.venue } : null;
+  const travelCover = !!trip && (!trip.completed || !mapReady);
+  const prepareCover = !trip && !mapReady && shownFocus !== (focus?.id || "initial") && !!preparingStop;
+  const covered = travelCover || prepareCover;
+  function retryTiles() { setError(""); gateRef.current?.retry(); tileRef.current?.redraw(); }
+  return <div className={styles.streetWrap}><div ref={container} className={styles.streetMap} role="region" aria-label="会場ごとの塔を表示する詳細地図" aria-hidden={covered} inert={covered}/>{!ready && !error && <p className={styles.streetNotice} role="status">街の地図を広げています…</p>}{error && !covered && <div className={styles.streetNotice} role="status"><p>{error}</p><button type="button" onClick={retryTiles}>地図を再読み込み</button></div>}<p className={styles.streetHint}>指2本・ホイール・＋−で拡大縮小<br/>点が会場の位置。線の先の塔は見やすく離しています。</p>{trip && travelCover && <TravelerJourney key={trip.id} id={trip.id} from={trip.from} to={trip.to} places={allTowers} running={trip.running} duration={trip.duration} mapReady={mapReady} failed={readiness.status === "failed"} onComplete={trip.onComplete} onRetry={retryTiles}/>} {prepareCover && preparingStop && <TravelerJourney key={`prepare:${focus?.id}`} id={`prepare:${focus?.id}`} from={preparingStop} to={preparingStop} places={allTowers} running={false} duration={1} mapReady={false} failed={!!error || readiness.status === "failed"} onComplete={ignoreCompletion} onRetry={retryTiles}/>}</div>;
 }
