@@ -45,12 +45,18 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
       map.on("movestart", () => { moving = true; needsPaint = true; gate.moveStart(); });
       map.on("moveend", () => { moving = false; needsPaint = true; gate.moveEnd(tiles.isLoading()); });
       tiles.addTo(map);
+      const decoded = new WeakSet<HTMLImageElement>(), decoding = new WeakSet<HTMLImageElement>();
       // Leaflet's load event is earlier than image decode/fade/paint. Check the
       // viewport itself before revealing it or releasing the playback timer.
       paintTimer = window.setInterval(() => {
         if (!alive || !needsPaint || moving || tiles.isLoading() || !container.current) return;
         const box = container.current.getBoundingClientRect();
-        const rects = [...container.current.querySelectorAll<HTMLImageElement>(".leaflet-tile-pane img.leaflet-tile")].filter(img => img.complete && img.naturalWidth > 0 && Number(window.getComputedStyle(img).opacity) >= .99).map(img => { const r = img.getBoundingClientRect(); return { left: r.left - box.left, top: r.top - box.top, right: r.right - box.left, bottom: r.bottom - box.top }; });
+        const images = [...container.current.querySelectorAll<HTMLImageElement>(".leaflet-tile-pane img.leaflet-tile")].filter(img => img.complete && img.naturalWidth > 0);
+        for (const img of images) if (!decoded.has(img) && !decoding.has(img)) {
+          decoding.add(img);
+          img.decode().then(() => decoded.add(img)).catch(() => { if (alive && img.isConnected) { gate.tileError(); setError("地図画像を表示できませんでした。再読み込みをお試しください。"); } });
+        }
+        const rects = images.filter(img => decoded.has(img) && Number(window.getComputedStyle(img).opacity) >= .99).map(img => { const r = img.getBoundingClientRect(); return { left: r.left - box.left, top: r.top - box.top, right: r.right - box.left, bottom: r.bottom - box.top }; });
         if (tilesCoverViewport(rects, box.width, box.height)) { needsPaint = false; gate.paintReady(); }
       }, 120);
       groupRef.current = L.layerGroup().addTo(map);
