@@ -4,20 +4,17 @@ import type * as Leaflet from "leaflet";
 import type { Feature, MultiPolygon } from "geojson";
 import { MAP_COLORS, shortVenue, spreadTowerLabels, towerFloorHeight, type MemoryTower } from "@/lib/activity-map";
 import { createMemoryMapGate, tilesCoverViewport, type MemoryMapReadiness } from "@/lib/activity-map-readiness";
-import { TravelerJourney, type TravelerStop } from "./TravelerJourney";
 import outline from "@/data/japan-outline.json";
 import styles from "./map.module.css";
 
 export interface MemoryMapFocus { id: string; keys: string[]; maxZoom?: number; minZoom?: number; replay?: boolean }
 const tileUrl = process.env.NEXT_PUBLIC_MEMORY_MAP_TILES || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const ignoreCompletion = () => {};
-export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect, onReadiness, readiness, trip }: { towers: MemoryTower[]; allTowers: MemoryTower[]; activeKeys: string[]; focus: MemoryMapFocus | null; onSelect: (keys: string[]) => void; onReadiness: (state: MemoryMapReadiness) => void; readiness: MemoryMapReadiness; trip: { id: string; from: TravelerStop; to: TravelerStop; running: boolean; completed: boolean; duration: number; expectedFocus: string | null; onComplete: (id: string) => void } | null }) {
+export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect, onReadiness, readiness }: { towers: MemoryTower[]; allTowers: MemoryTower[]; activeKeys: string[]; focus: MemoryMapFocus | null; onSelect: (keys: string[]) => void; onReadiness: (state: MemoryMapReadiness) => void; readiness: MemoryMapReadiness }) {
   const container = useRef<HTMLDivElement>(null), mapRef = useRef<Leaflet.Map | null>(null), groupRef = useRef<Leaflet.LayerGroup | null>(null), leafletRef = useRef<typeof Leaflet | null>(null);
   const drawRef = useRef<() => void>(() => {});
   const lastFocus = useRef("");
   const gateRef = useRef<ReturnType<typeof createMemoryMapGate> | null>(null), tileRef = useRef<Leaflet.TileLayer | null>(null);
   const [ready, setReady] = useState(false), [error, setError] = useState("");
-  const [shownFocus, setShownFocus] = useState("");
   useEffect(() => {
     let alive = true;
     let observer: ResizeObserver | undefined;
@@ -27,7 +24,7 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
       leafletRef.current = L;
       const map = L.map(container.current, { zoomControl: false, minZoom: 4, maxZoom: 19, scrollWheelZoom: true, zoomSnap: .5, zoomDelta: 1, keyboard: true });
       mapRef.current = map;
-      const gate = createMemoryMapGate(state => { onReadiness(state); if (state.status === "ready") setShownFocus(state.id); }); gateRef.current = gate;
+      const gate = createMemoryMapGate(onReadiness); gateRef.current = gate;
       map.fitBounds([[24, 123], [46, 146]], { padding: [12, 12], animate: false });
       // A local outline remains visible while distant street tiles are arriving.
       map.createPane("memory-land").style.zIndex = "150";
@@ -41,7 +38,7 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
       let moving = false, needsPaint = true;
       tiles.on("loading", () => { needsPaint = true; gate.tileStart(); });
       tiles.on("load", () => gate.tileEnd());
-      tiles.on("tileerror", () => { gate.tileError(); if (alive) setError("背景地図を読み込めませんでした。会場ごとの塔を残し、再生は待機しています。"); });
+      tiles.on("tileerror", () => { gate.tileError(); if (alive) setError("背景地図を読み込めませんでした。会場ごとの塔は表示しています。"); });
       map.on("movestart", () => { moving = true; needsPaint = true; gate.moveStart(); });
       map.on("moveend", () => { moving = false; needsPaint = true; gate.moveEnd(tiles.isLoading()); });
       tiles.addTo(map);
@@ -150,12 +147,6 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
     }
   }, [focus, allTowers, ready]);
 
-  const mapReady = readiness.status === "ready" && (!trip?.expectedFocus || readiness.id === trip.expectedFocus);
-  const preparingVenue = allTowers.find(t => focus?.keys.includes(t.key)) || allTowers[0];
-  const preparingStop = preparingVenue ? { latitude: preparingVenue.latitude, longitude: preparingVenue.longitude, label: preparingVenue.city || preparingVenue.venue, venue: preparingVenue.venue } : null;
-  const travelCover = !!trip && (!trip.completed || !mapReady);
-  const prepareCover = !trip && !mapReady && shownFocus !== (focus?.id || "initial") && !!preparingStop;
-  const covered = travelCover || prepareCover;
   function retryTiles() { setError(""); gateRef.current?.retry(); tileRef.current?.redraw(); }
-  return <div className={styles.streetWrap}><div ref={container} className={styles.streetMap} role="region" aria-label="会場ごとの塔を表示する詳細地図" aria-hidden={covered} inert={covered}/>{!ready && !error && <p className={styles.streetNotice} role="status">街の地図を広げています…</p>}{error && !covered && <div className={styles.streetNotice} role="status"><p>{error}</p><button type="button" onClick={retryTiles}>地図を再読み込み</button></div>}<p className={styles.streetHint}>指2本・ホイール・＋−で拡大縮小<br/>点が会場の位置。線の先の塔は見やすく離しています。</p>{trip && travelCover && <TravelerJourney key={trip.id} id={trip.id} from={trip.from} to={trip.to} places={allTowers} running={trip.running} duration={trip.duration} mapReady={mapReady} failed={readiness.status === "failed"} onComplete={trip.onComplete} onRetry={retryTiles}/>} {prepareCover && preparingStop && <TravelerJourney key={`prepare:${focus?.id}`} id={`prepare:${focus?.id}`} from={preparingStop} to={preparingStop} places={allTowers} running={false} duration={1} mapReady={false} failed={!!error || readiness.status === "failed"} onComplete={ignoreCompletion} onRetry={retryTiles}/>}</div>;
+  return <div className={styles.streetWrap}><div ref={container} className={styles.streetMap} role="region" aria-label="会場ごとの塔を表示する詳細地図"/>{!error && (!ready || readiness.status !== "ready") && <p className={styles.streetNotice} role="status">街の地図を広げています…</p>}{error && <div className={styles.streetNotice} role="status"><p>{error}</p><button type="button" onClick={retryTiles}>地図を再読み込み</button></div>}<p className={styles.streetHint}>指2本・ホイール・＋−で拡大縮小<br/>点が会場の位置。線の先の塔は見やすく離しています。</p></div>;
 }

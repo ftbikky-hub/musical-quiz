@@ -5,16 +5,13 @@ import { ACTIVITY_KINDS, type ActivityRecord } from "@/lib/activity";
 import { buildTowers, clusterTowers, MAP_COLORS, MEMORY_REGIONS, towersInRegion, towerFloorHeight, projectPlace, replaySteps, resolvePlace, validCoordinates, venueKey, type ActivityPlace, type MemoryTower } from "@/lib/activity-map";
 import type { MemoryMapReadiness } from "@/lib/activity-map-readiness";
 import { StreetMemoryMap, type MemoryMapFocus } from "./StreetMemoryMap";
+import { ZoomMemoryMap } from "./ZoomMemoryMap";
 import outline from "@/data/japan-outline.json";
 import base from "@/components/plans/plans.module.css";
 import styles from "./map.module.css";
 
 const land = outline.map(ring => ring.map(([lon, lat], i) => `${i ? "L" : "M"}${projectPlace(lon, lat).map(n => n.toFixed(2)).join(",")}`).join("") + "Z").join("");
 const labels = [{ name: "北海道", lon: 143, lat: 43.4 }, { name: "東北", lon: 141.2, lat: 39 }, { name: "関東", lon: 141, lat: 35.7 }, { name: "中部", lon: 137.2, lat: 36.4 }, { name: "関西", lon: 134.5, lat: 35.6 }, { name: "中国", lon: 132.5, lat: 35.3 }, { name: "四国", lon: 134, lat: 32.7 }, { name: "九州", lon: 129.3, lat: 32.4 }, { name: "沖縄", lon: 128.7, lat: 26.2 }];
-function travelerStop(towers: MemoryTower[]) {
-  const n = Math.max(1, towers.length);
-  return { latitude: towers.reduce((sum, t) => sum + t.latitude, 0) / n, longitude: towers.reduce((sum, t) => sum + t.longitude, 0) / n, label: [...new Set(towers.map(t => t.city || t.venue))].join("・"), venue: [...new Set(towers.map(t => t.venue))].join("・") };
-}
 const fullView = { zoom: 1, x: 480, y: 310 };
 export function ActivityMap() {
   const [records, setRecords] = useState<ActivityRecord[]>([]), [places, setPlaces] = useState<ActivityPlace[]>([]);
@@ -22,9 +19,8 @@ export function ActivityMap() {
   const [year, setYear] = useState(""), [kind, setKind] = useState("");
   const [step, setStep] = useState<number | null>(null), [playing, setPlaying] = useState(false), [speed, setSpeed] = useState(1800);
   const [view, setView] = useState(fullView), [selected, setSelected] = useState<string[]>([]);
-  const [mode, setMode] = useState<"overview" | "detail">("detail"), [follow, setFollow] = useState(true);
+  const [mode, setMode] = useState<"overview" | "detail">("overview"), [follow, setFollow] = useState(true);
   const [mapReadiness, setMapReadiness] = useState<MemoryMapReadiness>({ id: "initial", status: "loading" });
-  const [tripDone, setTripDone] = useState("");
   const [replayRun, setReplayRun] = useState(0);
   const [focusRequest, setFocusRequest] = useState<MemoryMapFocus | null>(null);
   const focusCounter = useRef(0);
@@ -60,18 +56,20 @@ export function ActivityMap() {
   const activeTowers = towers.filter(t => latest?.records.some(r => venueKey(r.venue, r.city) === t.key));
   const journeyKey = `journey:${replayRun}:${progress}`;
   const initialVenue = towersInRegion(allTowers, "tokyo")[0] || allTowers[0];
-  const currentFocus: MemoryMapFocus | null = step !== null && follow && latest
-    ? { id: journeyKey, keys: activeTowers.map(t => t.key), maxZoom: 13, minZoom: 12.5, replay: true }
-    : focusRequest || (initialVenue ? { id: "initial-venue", keys: [initialVenue.key], maxZoom: 14.5, minZoom: 14 } : null);
+  const currentFocus: MemoryMapFocus | null = focusRequest || (initialVenue ? { id: "initial-venue", keys: [initialVenue.key], maxZoom: 14.5, minZoom: 14 } : null);
   const focusTowers = allTowers.filter(t => selected.includes(t.key));
   const years = [...new Set(records.map(r => r.date.slice(0, 4)))].sort().reverse();
   const venues = [...new Map(filtered.map(r => [venueKey(r.venue, r.city), r])).values()];
   useEffect(() => {
-    if (!playing || (mode === "detail" && (mapReadiness.status !== "ready" || (follow && progress > 0 && (mapReadiness.id !== journeyKey || tripDone !== journeyKey))))) return;
-    // The speed is time to look around AFTER arrival, never a deadline for the camera.
-    const timer = window.setTimeout(() => { if (progress >= steps.length) setPlaying(false); else setStep(progress + 1); }, progress === 0 ? 100 : speed);
+    if (!playing || progress > 0) return;
+    const timer = window.setTimeout(() => setStep(1), 100);
     return () => window.clearTimeout(timer);
-  }, [playing, progress, speed, steps.length, mode, follow, mapReadiness, journeyKey, tripDone]);
+  }, [playing, progress]);
+  function finishDay() {
+    if (!playing) return;
+    if (progress >= steps.length) setPlaying(false);
+    else setStep(progress + 1);
+  }
   function changeFilter(nextYear: string, nextKind: string) { setYear(nextYear); setKind(nextKind); setPlaying(false); setStep(null); setSelected([]); setEditing(null); }
   function openDetail(keys: string[], maxZoom = 16) {
     setPlaying(false); setStep(null); setMode("detail");
@@ -91,8 +89,8 @@ export function ActivityMap() {
       <header className={styles.heading}><div><p className={base.eyebrow}>MY MEMORY ATLAS / JAPAN</p><h2 id="memory-map-title">通うほど、思い出は高く。</h2><p>記録1件が、塔の1段。好きに会いに行った回数を、積み重ねよう。</p></div><div className={styles.totals}><strong>{visible.length}<span>回のお出かけ</span></strong><strong>{towers.length}<span>会場の塔</span></strong></div></header>
       <div className={styles.filters}><label>年<select aria-label="地図の年" value={year} onChange={e => changeFilter(e.target.value, kind)}><option value="">すべての年</option>{years.map(y => <option key={y} value={y}>{y}年</option>)}</select></label><label>種類<select aria-label="地図の種類" value={kind} onChange={e => changeFilter(year, e.target.value)}><option value="">すべて</option>{Object.entries(ACTIVITY_KINDS).map(([k, name]) => <option key={k} value={k}>{name}</option>)}</select></label><span>{mapped.length} / {filtered.length}件を地図に表示</span></div>
       <div className={styles.exploreBar} role="group" aria-label="表示する地域"><button type="button" aria-pressed={mode === "overview"} onClick={() => { setPlaying(false); setStep(null); setMode("overview"); setView(fullView); }}>日本全体</button>{MEMORY_REGIONS.map(region => { const points = towersInRegion(allTowers, region.id); return <button type="button" key={region.id} disabled={!points.length} onClick={() => openDetail(points.map(t => t.key), region.id === "takeshiba" ? 18 : 14)}>{region.name}を拡大</button>; })}<button type="button" disabled={!allTowers.length} onClick={() => openDetail(allTowers.map(t => t.key), 14)}>訪れた場所を全部</button></div>
-      <p className={styles.exploreHelp}>再生すると列車が地図を進み、到着した街の会場別の塔が育ちます。移動中に街の地図を準備し、表示が整ってから切り替えます。</p>
-      {mode === "detail" ? <StreetMemoryMap towers={towers} allTowers={allTowers} activeKeys={[...selected, ...(latest?.records.map(r => venueKey(r.venue, r.city)) || [])]} focus={currentFocus} onSelect={setSelected} onReadiness={setMapReadiness} readiness={mapReadiness} trip={step !== null && latest && follow ? { id: journeyKey, from: travelerStop(progress > 1 ? buildTowers(steps[progress - 2].records, places) : activeTowers), to: travelerStop(activeTowers), running: playing, completed: tripDone === journeyKey, expectedFocus: journeyKey, duration: speed === 900 ? 1800 : speed === 3500 ? 4500 : 3000, onComplete: setTripDone } : null}/> : <div className={styles.canvas}>
+      <p className={styles.exploreHelp}>全国から目的地へズームし、会場の塔が育ったら、ふたたび日本全体へ。作品名とともに、好きに会いに行った日をたどります。</p>
+      {step !== null ? <ZoomMemoryMap key={journeyKey} towers={towers} allTowers={allTowers} day={latest} running={playing} speed={speed} follow={follow} onComplete={finishDay} onSelect={setSelected}/> : mode === "detail" ? <StreetMemoryMap towers={towers} allTowers={allTowers} activeKeys={selected} focus={currentFocus} onSelect={setSelected} onReadiness={setMapReadiness} readiness={mapReadiness}/> : <div className={styles.canvas}>
         <div className={styles.mapButtons} role="group" aria-label="地図を操作"><button type="button" aria-label="拡大" onClick={() => zoom(2)}>＋</button><button type="button" aria-label="縮小" disabled={view.zoom === 1} onClick={() => zoom(.5)}>−</button><button type="button" onClick={() => setView(fullView)}>位置を戻す</button></div>
         <svg ref={mapElement} className={styles.map} viewBox={`${view.x - 480 / view.zoom} ${view.y - 310 / view.zoom} ${960 / view.zoom} ${620 / view.zoom}`} role="group" aria-label="訪れた回数が積み上がる日本地図" onPointerDown={e => { if ((e.target as Element).closest('[role="button"]')) return; e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY, cx: view.x, cy: view.y, moved: false }; }} onPointerMove={e => { const d = drag.current; if (!d) return; const scale = 960 / view.zoom / e.currentTarget.getBoundingClientRect().width; const dx = e.clientX - d.x, dy = e.clientY - d.y; if (Math.hypot(dx, dy) > 4) { d.moved = true; setView(v => ({ ...v, x: d.cx - dx * scale, y: d.cy - dy * scale })); } }} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
           <defs><linearGradient id={gradientId} x1="0" y1="0" x2="0.7" y2="1"><stop stopColor="#ebe5d1"/><stop offset="1" stopColor="#d7d7bf"/></linearGradient></defs>
@@ -121,8 +119,8 @@ export function ActivityMap() {
       </div>}
       {latest && <div className={styles.journeyStops} aria-label="この日の会場と訪問回数">{activeTowers.map(t => <article key={t.key}><div className={styles.stopTower} aria-hidden="true" style={{ height: `${t.records.length * stopFloorHeight}px` }}>{Array.from({ length: Math.min(30, t.records.length) }, (_, i) => <i key={i} style={{ background: MAP_COLORS[t.records[Math.floor(i * t.records.length / Math.min(30, t.records.length))].kind] }}/>)}</div><div><small>{latest.date} · {t.city}</small><h3>{t.venue}</h3><strong>この日まで {t.records.length}回</strong><button type="button" onClick={() => { setSelected([t.key]); openDetail([t.key], 17); }}>会場を詳しく見る ↗</button></div></article>)}</div>}
       <div className={styles.legend}>{Object.entries(ACTIVITY_KINDS).map(([k, name]) => <span key={k}><i style={{ background: MAP_COLORS[k as keyof typeof MAP_COLORS] }}/>{name}</span>)}</div>
-      <div className={styles.player}><div className={styles.playActions}><button className={styles.play} type="button" disabled={!steps.length} onClick={() => { if (!playing) { setMode("detail"); if (step === null || progress >= steps.length) { setReplayRun(n => n + 1); setStep(0); } } setPlaying(!playing); }}>{playing ? "Ⅱ 一時停止" : "▶ 思い出を再生"}</button><button type="button" onClick={() => { setPlaying(false); setStep(null); }}>すべて表示</button><label>速さ<select aria-label="再生の速さ" value={speed} onChange={e => setSpeed(Number(e.target.value))}><option value={3500}>ゆっくり</option><option value={1800}>ふつう</option><option value={900}>はやい</option></select></label><label className={styles.follow}><input type="checkbox" checked={follow} onChange={e => setFollow(e.target.checked)}/>再生中は地域をなめらかに追う</label></div><label className={styles.timeline}>思い出をたどる<input aria-label="再生位置" type="range" min="0" max={steps.length || 1} value={progress} disabled={!steps.length} onChange={e => { setPlaying(false); setMode("detail"); setStep(Number(e.target.value)); }}/><span>{progress} / {steps.length}日</span></label><div className={styles.now} role="status">{playing && mapReadiness.status !== "ready" && <span>{mapReadiness.status === "failed" ? "地図を読み込めず再生を待機しています。地図の再読み込みをお試しください。" : "地図の移動・読み込みを待っています…"}</span>}{latest ? <><strong>{latest.date.replaceAll("-", ".")}</strong><span>{latest.records.map(r => `${r.title} / ${r.venue}`).join(" ・ ")}</span></> : <span>{progress === 0 && step !== null ? "最初の思い出から。" : "塔を押すと、その場所の記録が開きます。近い会場のまとまりは、押して拡大できます。"}</span>}</div></div>
-      <p className={styles.note}>日付ごとに積み上がります。速度は到着後に眺める時間です。地図の移動と画像の読み込みが終わってから次へ進みます。同じ日の訪問順や、実際の移動経路は表しません。近い会場はまとめて表示。詳細地図では会場ごとに塔を分け、同じ高さの基準で回数を比較できます。近すぎる塔は実際の会場位置へ線を結んで離して表示します。</p>
+      <div className={styles.player}><div className={styles.playActions}><button className={styles.play} type="button" disabled={!steps.length} onClick={() => { if (!playing) { setMode("detail"); if (step === null || progress >= steps.length) { setReplayRun(n => n + 1); setStep(0); } } setPlaying(!playing); }}>{playing ? "Ⅱ 一時停止" : "▶ 思い出を再生"}</button><button type="button" onClick={() => { setPlaying(false); setStep(null); }}>すべて表示</button><label>速さ<select aria-label="再生の速さ" value={speed} onChange={e => setSpeed(Number(e.target.value))}><option value={3500}>ゆっくり</option><option value={1800}>ふつう</option><option value={900}>はやい</option></select></label><label className={styles.follow}><input type="checkbox" checked={follow} onChange={e => setFollow(e.target.checked)}/>目的地へズームする</label></div><label className={styles.timeline}>思い出をたどる<input aria-label="再生位置" type="range" min="0" max={steps.length || 1} value={progress} disabled={!steps.length} onChange={e => { setPlaying(false); setMode("detail"); setStep(Number(e.target.value)); }}/><span>{progress} / {steps.length}日</span></label><div className={styles.now} role="status">{latest ? <><strong>{latest.date.replaceAll("-", ".")}</strong><span>{latest.records.map(r => `${r.title} / ${r.venue}`).join(" ・ ")}</span></> : <span>{progress === 0 && step !== null ? "最初の思い出から。" : "塔を押すと、その場所の記録が開きます。近い会場のまとまりは、押して拡大できます。"}</span>}</div></div>
+      <p className={styles.note}>日付ごとに積み上がり、全国に戻ってから次の目的地へ進みます。速度は到着後に眺める時間です。再生は同梱の地図で動くので、画像の読み込みを待たずに楽しめます。同じ日の複数会場はまとめて表示し、訪問順や実際の移動経路は表しません。近い会場はまとめて表示。詳細地図では会場ごとに塔を分け、同じ高さの基準で回数を比較できます。近すぎる塔は実際の会場位置へ線を結んで離して表示します。</p>
     </section>
     {filtered.length === 0 && <div className={base.empty}><p>この条件の行動記録はまだありません。</p><Link href="/activity/new">最初の思い出を残す ↗</Link></div>}
     {focusTowers.length > 0 && <section className={styles.details} aria-label="選んだ場所の記録"><div className={styles.sectionTitle}><h2>この場所で出会ったもの</h2><button type="button" onClick={() => setSelected([])}>閉じる</button></div>{focusTowers.map(t => <div key={t.key}><h3>{t.venue} <span>{t.records.length}回</span></h3>{[...t.records].sort((a, b) => b.date.localeCompare(a.date)).map(r => <Link key={r.id} href={`/activity/${r.id}/edit`} className={styles.memory}><time>{r.date} {r.time?.slice(0, 5)}</time><span>{r.title}</span><small>{ACTIVITY_KINDS[r.kind]} ↗</small></Link>)}</div>)}</section>}
