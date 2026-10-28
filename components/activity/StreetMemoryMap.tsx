@@ -1,15 +1,19 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
+import type { Feature, MultiPolygon } from "geojson";
 import { MAP_COLORS, shortVenue, spreadTowerLabels, towerFloorHeight, type MemoryTower } from "@/lib/activity-map";
+import { createMemoryMapGate, type MemoryMapReadiness } from "@/lib/activity-map-readiness";
+import outline from "@/data/japan-outline.json";
 import styles from "./map.module.css";
 
-export interface MemoryMapFocus { id: string; keys: string[]; maxZoom?: number }
+export interface MemoryMapFocus { id: string; keys: string[]; maxZoom?: number; minZoom?: number; replay?: boolean }
 const tileUrl = process.env.NEXT_PUBLIC_MEMORY_MAP_TILES || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect }: { towers: MemoryTower[]; allTowers: MemoryTower[]; activeKeys: string[]; focus: MemoryMapFocus | null; onSelect: (keys: string[]) => void }) {
+export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect, onReadiness }: { towers: MemoryTower[]; allTowers: MemoryTower[]; activeKeys: string[]; focus: MemoryMapFocus | null; onSelect: (keys: string[]) => void; onReadiness: (state: MemoryMapReadiness) => void }) {
   const container = useRef<HTMLDivElement>(null), mapRef = useRef<Leaflet.Map | null>(null), groupRef = useRef<Leaflet.LayerGroup | null>(null), leafletRef = useRef<typeof Leaflet | null>(null);
   const drawRef = useRef<() => void>(() => {});
   const lastFocus = useRef("");
+  const gateRef = useRef<ReturnType<typeof createMemoryMapGate> | null>(null), tileRef = useRef<Leaflet.TileLayer | null>(null);
   const [ready, setReady] = useState(false), [error, setError] = useState("");
   useEffect(() => {
     let alive = true;
@@ -19,27 +23,36 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
       leafletRef.current = L;
       const map = L.map(container.current, { zoomControl: false, minZoom: 4, maxZoom: 19, scrollWheelZoom: true, zoomSnap: .5, zoomDelta: 1, keyboard: true });
       mapRef.current = map;
+      const gate = createMemoryMapGate(onReadiness); gateRef.current = gate;
       map.fitBounds([[24, 123], [46, 146]], { padding: [12, 12], animate: false });
+      // A local outline remains visible while distant street tiles are arriving.
+      map.createPane("memory-land").style.zIndex = "150";
+      const land: Feature<MultiPolygon> = { type: "Feature", properties: {}, geometry: { type: "MultiPolygon", coordinates: outline.map(ring => [ring]) } };
+      L.geoJSON(land, { pane: "memory-land", interactive: false, style: { color: "#c4cbb4", weight: 1, fillColor: "#f5f0df", fillOpacity: 1 } }).addTo(map);
       L.control.zoom({ position: "topright", zoomInTitle: "地図を拡大", zoomOutTitle: "地図を縮小" }).addTo(map);
       L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
       // Browser caching/referrers are preserved; only currently visible tiles are fetched.
-      const tiles = L.tileLayer(tileUrl, { maxZoom: 19, updateWhenIdle: true, updateWhenZooming: false, keepBuffer: 0, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors' }).addTo(map);
-      let failures = 0;
-      tiles.on("tileerror", () => { failures++; if (alive && failures >= 3) setError("背景地図を読み込めませんでした。会場の塔は表示できます。「日本全体」で概略図に戻れます。"); });
-      tiles.on("tileload", () => { if (alive && failures) { failures = 0; setError(""); } });
+      const tiles = L.tileLayer(tileUrl, { maxZoom: 19, updateWhenIdle: true, updateWhenZooming: false, keepBuffer: 1, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors' });
+      tileRef.current = tiles;
+      tiles.on("loading", () => gate.tileStart());
+      tiles.on("load", () => gate.tileEnd());
+      tiles.on("tileerror", () => { gate.tileError(); if (alive) setError("背景地図を読み込めませんでした。会場ごとの塔を残し、再生は待機しています。"); });
+      map.on("movestart", () => gate.moveStart());
+      map.on("moveend", () => gate.moveEnd(tiles.isLoading()));
+      tiles.addTo(map);
       groupRef.current = L.layerGroup().addTo(map);
       map.on("moveend zoomend resize", () => drawRef.current());
       observer = new ResizeObserver(() => map.invalidateSize({ pan: false })); observer.observe(container.current);
       setReady(true);
     }).catch(() => { if (alive) setError("詳細地図を開けませんでした。「日本全体」で概略図に戻ってください。"); });
-    return () => { alive = false; observer?.disconnect(); mapRef.current?.remove(); mapRef.current = null; groupRef.current = null; };
-  }, []);
+    return () => { alive = false; gateRef.current?.dispose(); observer?.disconnect(); mapRef.current?.remove(); mapRef.current = null; groupRef.current = null; tileRef.current = null; };
+  }, [onReadiness]);
 
   useEffect(() => {
     function draw() {
       const map = mapRef.current, L = leafletRef.current, group = groupRef.current; if (!map || !L || !group) return;
       group.clearLayers();
-      const size = map.getSize(), unit = towerFloorHeight(allTowers), detailed = map.getZoom() >= 14;
+      const size = map.getSize(), unit = towerFloorHeight(allTowers), detailed = focus?.replay || map.getZoom() >= 14;
       const visibleKeys = new Set(towers.map(t => t.key));
       const positions = allTowers.map(t => { const point = map.latLngToContainerPoint([t.latitude, t.longitude]); return { key: t.key, x: point.x, y: point.y, height: unit * t.records.length }; }).filter(p => p.x > -80 && p.x < size.x + 80 && p.y > -80 && p.y < size.y + 160);
       if (!detailed) {
@@ -93,17 +106,21 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
       }
     }
     drawRef.current = draw; if (ready) draw();
-  }, [towers, allTowers, activeKeys, onSelect, ready]);
+  }, [towers, allTowers, activeKeys, onSelect, ready, focus?.replay]);
 
   useEffect(() => {
     const map = mapRef.current, L = leafletRef.current;
     if (!ready || !map || !L || !focus || focus.id === lastFocus.current) return;
     const locations = allTowers.filter(t => focus.keys.includes(t.key)); if (!locations.length) return;
-    lastFocus.current = focus.id; map.stop();
+    lastFocus.current = focus.id; gateRef.current?.begin(focus.id); map.stop();
     const bounds = L.latLngBounds(locations.map(t => [t.latitude, t.longitude] as [number, number]));
     const animate = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    map.flyToBounds(bounds, { paddingTopLeft: [65, 160], paddingBottomRight: [65, 75], maxZoom: focus.maxZoom || 16, duration: .7, animate });
+    const zoom = Math.max(focus.minZoom || 4, Math.min(focus.maxZoom || 16, map.getBoundsZoom(bounds, false, L.point(130, 235))));
+    const centre = bounds.getCenter();
+    const sameView = map.getCenter().distanceTo(centre) < 1 && Math.abs(map.getZoom() - zoom) < .01;
+    map.flyTo(centre, zoom, { duration: focus.replay ? 1.3 : .7, animate });
+    if (sameView || !animate) gateRef.current?.moveEnd(tileRef.current?.isLoading() || false);
   }, [focus, allTowers, ready]);
 
-  return <div className={styles.streetWrap}><div ref={container} className={styles.streetMap} role="region" aria-label="会場ごとの塔を表示する詳細地図"/>{!ready && !error && <p className={styles.streetNotice} role="status">街の地図を広げています…</p>}{error && <p className={styles.streetNotice} role="status">{error}</p>}<p className={styles.streetHint}>指2本・ホイール・＋−で拡大縮小<br/>点が会場の位置。線の先の塔は見やすく離しています。</p></div>;
+  return <div className={styles.streetWrap}><div ref={container} className={styles.streetMap} role="region" aria-label="会場ごとの塔を表示する詳細地図"/>{!ready && !error && <p className={styles.streetNotice} role="status">街の地図を広げています…</p>}{error && <div className={styles.streetNotice} role="status"><p>{error}</p><button type="button" onClick={() => { setError(""); gateRef.current?.retry(); tileRef.current?.redraw(); }}>地図を再読み込み</button></div>}<p className={styles.streetHint}>指2本・ホイール・＋−で拡大縮小<br/>点が会場の位置。線の先の塔は見やすく離しています。</p></div>;
 }
