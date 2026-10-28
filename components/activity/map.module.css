@@ -24,14 +24,19 @@
 @media(max-width:700px) { .exploreBar { padding: 14px 12px 6px; gap: 6px; }.exploreBar button { padding: 8px 10px; font-size: 10px; }.exploreHelp { padding: 5px 14px 12px; }.streetWrap { height: 590px; }.streetHint { padding: 7px 8px; font-size: 9px; }.streetMap :global(.leaflet-control-attribution) { font-size: 9px; } }
 .areaMarker { width: 90px; height: 70px; }.areaMarker small { display: block; max-width: 84px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 9px; line-height: 1.4; margin-top: 3px; }.areaMarker span { margin-top: 2px; }.streetActive svg { animation: towerArrival .55s ease-out; transform-origin: center bottom; }@keyframes towerArrival { from { transform: scaleY(.78); opacity: .6; } to { transform: scaleY(1); opacity: 1; } }@media(prefers-reduced-motion:reduce) { .streetActive svg { animation: none; } }
 .journeyStops { display: flex; flex-wrap: wrap; gap: 22px; padding: 18px 24px; background: #f7f2df; border-top: 1px solid #d9d1b7; }.journeyStops article { display: flex; gap: 18px; align-items: flex-end; flex: 1 1 240px; min-width: 0; }.stopTower { display: flex; flex-direction: column-reverse; width: 26px; min-height: 12px; flex-shrink: 0; transform: skewY(-8deg); box-shadow: 7px 4px 0 #274a3a44; }.stopTower i { display: block; flex: 1; border-top: 1px solid #fff5ce; }.journeyStops small { color: #8a805f; font-size: 10px; }.journeyStops h3 { font: 16px/1.6 var(--theatre-serif); color: #315b49; margin: 3px 0; overflow-wrap: anywhere; }.journeyStops strong { font-size: 12px; color: #95743a; }.journeyStops button { display: block; color: #42674c; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; margin-top: 7px; min-height: 26px; }@media(max-width:700px) { .journeyStops { padding: 15px; }.journeyStops article { gap: 15px; } }
-.zoomReplay { background: radial-gradient(ellipse at 55% 45%,#fcf9ed,#e8ecda); }
+.zoomReplay { background: #f4f2e6; }
+.zoomViewport { position: relative; isolation: isolate; background: #dce7df; }
 .zoomStage { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 16px 24px; color: #7b805e; font-size: 10px; letter-spacing: .1em; border-bottom: 1px solid #d9d7c4; }
 .zoomMap { display: block; width: 100%; height: auto; aspect-ratio: 960/620; overflow: hidden; }
-.zoomDestination { padding: 21px 28px 25px; background: #fffdf3; border-top: 1px solid #d9d4bf; color: #315744; overflow-wrap: anywhere; }
+.zoomDestination { position: absolute; right: 25px; bottom: 30px; width: 340px; max-width: calc(100% - 28px); max-height: 220px; overflow-y: auto; padding: 18px 22px; background: #fffdf1f2; border: 1px solid #cfc6a6; border-radius: 3px; box-shadow: 0 5px 22px #31472e12; color: #315744; overflow-wrap: anywhere; z-index: 2; }
 .zoomDestination > small { display: inline-block; color: #9b8050; font-size: 10px; letter-spacing: .14em; margin-right: 18px; }
 .zoomDestination time { color: #92957b; font: 12px Georgia,serif; }
 .zoomDestination h3 { font: 22px/1.6 var(--theatre-serif); margin: 8px 0 4px; }
 .zoomDestination h3 span { display: inline-block; font: 11px/1.7 var(--theatre-serif); color: #8a9578; margin-left: 12px; }
 .zoomDestination p { font: 16px/1.8 var(--theatre-serif); margin: 3px 0 0; color: #97783f; }
 .zoomDestination > div + div { margin-top: 14px; border-top: 1px solid #e5dfcc; padding-top: 8px; }
-@media(max-width:700px) { .zoomStage { padding: 13px 15px; font-size: 9px; }.zoomDestination { padding: 18px 16px 21px; }.zoomDestination h3 { font-size: 18px; }.zoomDestination p { font-size: 14px; }.zoomMap { min-height: 350px; } }
+.zoomAttribution { position: absolute; bottom: 0; right: 0; z-index: 3; padding: 3px 7px; background: #fffdf4ee; color: #415943; font-size: 9px; }
+.zoomTileStatus { position: absolute; top: 15px; left: 15px; max-width: calc(100% - 30px); padding: 8px 12px; background: #fffdf1ed; color: #697c62; font-size: 10px; border: 1px solid #d9d4bf; z-index: 2; }
+.zoomTileStatus button { margin-left: 10px; text-decoration: underline; }
+.zoomMap :global(image) { filter: saturate(.6) sepia(.07); }
+@media(max-width:700px) { .zoomStage { padding: 13px 15px; font-size: 9px; }.zoomDestination { right: 14px; bottom: 30px; padding: 13px 15px; max-height: 210px; }.zoomDestination h3 { font-size: 17px; margin-top: 5px; }.zoomDestination p { font-size: 13px; }.zoomMap { min-height: 620px; } }

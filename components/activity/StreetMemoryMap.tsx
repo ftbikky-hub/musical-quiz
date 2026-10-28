@@ -7,7 +7,7 @@ import { createMemoryMapGate, tilesCoverViewport, type MemoryMapReadiness } from
 import outline from "@/data/japan-outline.json";
 import styles from "./map.module.css";
 
-export interface MemoryMapFocus { id: string; keys: string[]; maxZoom?: number; minZoom?: number; replay?: boolean }
+export interface MemoryMapFocus { id: string; keys: string[]; maxZoom?: number; minZoom?: number; replay?: boolean; national?: boolean }
 const tileUrl = process.env.NEXT_PUBLIC_MEMORY_MAP_TILES || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect, onReadiness, readiness }: { towers: MemoryTower[]; allTowers: MemoryTower[]; activeKeys: string[]; focus: MemoryMapFocus | null; onSelect: (keys: string[]) => void; onReadiness: (state: MemoryMapReadiness) => void; readiness: MemoryMapReadiness }) {
   const container = useRef<HTMLDivElement>(null), mapRef = useRef<Leaflet.Map | null>(null), groupRef = useRef<Leaflet.LayerGroup | null>(null), leafletRef = useRef<typeof Leaflet | null>(null);
@@ -132,6 +132,12 @@ export function StreetMemoryMap({ towers, allTowers, activeKeys, focus, onSelect
   useEffect(() => {
     const map = mapRef.current, L = leafletRef.current;
     if (!ready || !map || !L || !focus || focus.id === lastFocus.current) return;
+    if (focus.national) {
+      lastFocus.current = focus.id; gateRef.current?.begin(focus.id); map.stop();
+      map.fitBounds([[24, 123], [46, 146]], { padding: [12, 12], animate: false });
+      gateRef.current?.moveEnd(tileRef.current?.isLoading() || false); map.fire("moveend");
+      return;
+    }
     const locations = allTowers.filter(t => focus.keys.includes(t.key)); if (!locations.length) return;
     lastFocus.current = focus.id; gateRef.current?.begin(focus.id); map.stop();
     const bounds = L.latLngBounds(locations.map(t => [t.latitude, t.longitude] as [number, number]));

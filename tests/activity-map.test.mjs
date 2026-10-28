@@ -11,9 +11,9 @@ const camera=await load('lib/activity-zoom.ts');
 test('destination zoom scales around a fixed anchor, stays onscreen, and reverses without a pan',()=>{
  const full=camera.ATLAS_FULL_VIEW;
  for(const [longitude,latitude] of [[135.49456,34.69983],[139.7618,35.657],[128,26],[143,43.4]]) {
-  const [x,y]=map.projectPlace(longitude,latitude),local={x,y:y+30/160,zoom:160};
-  const px=(local.x*160-full.x)/159,py=(local.y*160-full.y)/159;
-  const fixed=[480+px-full.x,310+py-full.y];
+  const [x,y]=camera.projectAtlas(longitude,latitude),local={x,y:y+30/160,zoom:160};
+  const px=(local.x*160-full.x*full.zoom)/(160-full.zoom),py=(local.y*160-full.y*full.zoom)/(160-full.zoom);
+  const fixed=[480+(px-full.x)*full.zoom,310+(py-full.y)*full.zoom];
   for(let i=0;i<=100;i++) {
    const t=i/100,c=camera.zoomAtlasCamera(full,local,t),r=camera.zoomAtlasCamera(local,full,1-t);
    assert(Math.abs(480+(px-c.x)*c.zoom-fixed[0])<1e-7);
@@ -22,6 +22,32 @@ test('destination zoom scales around a fixed anchor, stays onscreen, and reverse
    const sx=480+(x-c.x)*c.zoom,sy=310+(y-c.y)*c.zoom;
    assert(sx>=0&&sx<=960&&sy>=0&&sy<=620);
   }
+ }
+});
+test('Mercator venue and street tile positions use the same world and current viewport only',()=>{
+ const [x,y]=camera.projectAtlas(139.7618,35.657);
+ for(const zoom of [.85,2,8,32,160])for(const unit of [1,3]) {
+  const tiles=camera.atlasTiles({x,y,zoom},960,620*unit,unit);
+  assert(tiles.length>0&&tiles.length<=50);
+  assert(tiles.some(t=>x>=t.left&&x<t.left+t.size&&y>=t.top&&y<t.top+t.size));
+  for(const tile of tiles){
+   assert(tile.x>=0&&tile.y>=0&&tile.x<2**tile.z&&tile.y<2**tile.z);
+   const expectedX=x/8192*2**tile.z,expectedY=y/8192*2**tile.z;
+   if(tile.x===Math.floor(expectedX)&&tile.y===Math.floor(expectedY)){
+    assert(Math.abs((x-tile.left)/tile.size-(expectedX-Math.floor(expectedX)))<1e-8);
+    assert(Math.abs((y-tile.top)/tile.size-(expectedY-Math.floor(expectedY)))<1e-8);
+   }
+  }
+ }
+});
+test('national tower clusters share street map coordinates and retain every venue count',()=>{
+ const towers=[{key:'osaka',longitude:135.49456,latitude:34.69983,records:[{id:'1'},{id:'2'}]},{key:'spring',longitude:139.7618,latitude:35.657,records:[{id:'3'}]},{key:'autumn',longitude:139.7619,latitude:35.6571,records:[{id:'4'}]}];
+ const groups=camera.clusterAtlasTowers(towers,.85);
+ assert.equal(groups.length,2);
+ assert.equal(groups.flatMap(g=>g.towers).flatMap(t=>t.records).length,4);
+ for(const group of groups) {
+  const sx=480+(group.x-camera.ATLAS_FULL_VIEW.x)*.85,sy=310+(group.y-camera.ATLAS_FULL_VIEW.y)*.85;
+  assert(sx>0&&sx<960&&sy>0&&sy<620);
  }
 });
 const readiness=await load('lib/activity-map-readiness.ts');
