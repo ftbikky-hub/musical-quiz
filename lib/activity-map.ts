@@ -50,3 +50,45 @@ export function clusterTowers(towers: MemoryTower[], zoom: number) {
   }
   return clusters.sort((a, b) => a.y - b.y);
 }
+
+export const MEMORY_REGIONS = [
+  { id: "tokyo", name: "東京・舞浜", bounds: [35.58, 139.64, 35.82, 139.95] },
+  { id: "takeshiba", name: "竹芝の劇場", bounds: [35.654, 139.758, 35.660, 139.766] },
+  { id: "yokohama", name: "横浜", bounds: [35.40, 139.55, 35.52, 139.72] },
+  { id: "nagoya", name: "名古屋", bounds: [35.05, 136.80, 35.30, 137.05] },
+  { id: "kansai", name: "大阪・京都", bounds: [34.55, 135.35, 35.15, 135.90] },
+] as const;
+export function towersInRegion(towers: MemoryTower[], region: string) {
+  const area = MEMORY_REGIONS.find(r => r.id === region);
+  if (!area) return [];
+  const [south, west, north, east] = area.bounds;
+  return towers.filter(t => t.latitude >= south && t.latitude <= north && t.longitude >= west && t.longitude <= east);
+}
+export function towerFloorHeight(towers: MemoryTower[]) { return Math.min(13, 125 / Math.max(1, ...towers.map(t => t.records.length))); }
+export function shortVenue(venue: string) {
+  return venue.replace(/^JR東日本四季劇場/, "四季劇場").replace(/ コンサートホール$/, "");
+}
+export interface ScreenTower { key: string; x: number; y: number; height: number }
+// Separate close venues visually, keeping leader lines to the original coordinates.
+// Full-record heights stabilize placement while replay adds floors to each tower.
+export function spreadTowerLabels(points: ScreenTower[], width: number, height: number) {
+  const placed: ScreenTower[] = [];
+  for (const point of [...points].sort((a, b) => a.key.localeCompare(b.key))) {
+    const candidates = [{ x: point.x, y: point.y }];
+    for (let ring = 1; ring <= 6; ring++) for (let i = 0; i < 12; i++) {
+      const angle = i * Math.PI / 6;
+      candidates.push({ x: point.x + Math.cos(angle) * ring * 78, y: point.y + Math.sin(angle) * ring * 65 });
+    }
+    let best = { ...point }, bestScore = Infinity;
+    for (const candidate of candidates) {
+      const x = Math.max(70, Math.min(width - 70, candidate.x));
+      const y = Math.max(point.height + 43, Math.min(height - 60, candidate.y));
+      const overlap = placed.reduce((score, p) => score + (Math.abs(p.x - x) < 137 && y + 46 > p.y - p.height - 35 && y - point.height - 35 < p.y + 46 ? 1 : 0), 0);
+      const score = overlap * 100000 + Math.hypot(x - point.x, y - point.y);
+      if (score < bestScore) { bestScore = score; best = { ...point, x, y }; }
+      if (overlap === 0 && score < 1) break;
+    }
+    placed.push(best);
+  }
+  return placed;
+}

@@ -29,6 +29,24 @@ test('tower counts retain every visit; zoom separates nearby venues and replay g
  assert.equal(map.buildTowers([row({venue:'未知'})],[]).length,0);
 });
 const files=await readdir(new URL('supabase/migrations/',root));
+test('city views retain per-venue counts and separate colocated theatre labels without moving saved coordinates',()=>{
+ const records=Array.from({length:9},(_,i)=>row({id:String(i)}));
+ const towers=map.buildTowers(records,[]);
+ const unit=map.towerFloorHeight(towers);assert.equal(unit,13);assert.equal(towers[0].records.length*unit,117);
+ const spring={...towers[0],key:'spring',latitude:35.657,longitude:139.7618};
+ const autumn={...spring,key:'autumn',records:records.slice(0,2)};
+ assert.equal(map.towersInRegion([spring,autumn,...towers],'takeshiba').length,2);
+ assert.equal(map.towersInRegion([spring,autumn,...towers],'tokyo').length,2);
+ assert.equal(map.towersInRegion([spring,autumn,...towers],'kansai').length,1);
+ const points=[{key:'spring',x:170,y:280,height:78},{key:'autumn',x:170,y:280,height:26},{key:'free',x:170,y:280,height:39}];
+ const before=JSON.stringify(points),layout=map.spreadTowerLabels(points,340,590);
+ assert.equal(JSON.stringify(points),before);assert.equal(layout.length,3);
+ for(let i=0;i<layout.length;i++)for(let j=i+1;j<layout.length;j++){
+   const a=layout[i],b=layout[j];assert(!(Math.abs(a.x-b.x)<137&&a.y+46>b.y-b.height-35&&a.y-a.height-35<b.y+46),'labels overlap');
+ }
+ assert.equal(JSON.stringify(layout),JSON.stringify(map.spreadTowerLabels([...points].reverse(),340,590)));
+ assert.equal(map.shortVenue('JR東日本四季劇場［春］'),'四季劇場［春］');
+});
 const sql=await readFile(process.env.ACTIVITY_PLACES_SQL_FILE||new URL('supabase/migrations/'+files.find(f=>f.endsWith('_activity_places.sql')),root),'utf8');
 const uid='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000-000000000002';
 for(const defaults of [false,true])test(`places replay explicit least privilege, ownership keys and RLS (defaults ${defaults})`,async()=>{

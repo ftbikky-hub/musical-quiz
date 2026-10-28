@@ -1,3 +1,4 @@
+import "leaflet/dist/leaflet.css";
 import type { Metadata } from "next";
 import { TheatreShell } from "@/components/theatre/TheatreShell";
 export const metadata: Metadata = { title: "行動記録 | THEATRE NOTES", robots: { index: false, follow: false } };
